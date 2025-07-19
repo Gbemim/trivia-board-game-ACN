@@ -1,0 +1,107 @@
+# Trivia Board Game Backend – Task List
+
+_Reference: [skills_challenge.md](./skills_challenge.md)_
+
+## Day 1: Core Setup & API Foundations
+
+### 1. Project Setup
+- [x] Initialize Node.js project with TypeScript
+- [x] Set up ESLint/Prettier for code quality
+- [x] Configure environment variables (dotenv)
+- [x] Set up Git repository (if not already)
+
+### 2. Supabase Integration
+- [ ] Create Supabase project (if not done)
+- [ ] Define tables:
+  - [ ] `trivia_questions` (id, category, question, answers [2-4], correct_answer_index, score, is_ai_generated/tag)
+  - [ ] `game_sessions` (id, status, current_score, attempts, user_id/username, started_at, time_limit, etc.)
+  - [ ] `user_answers` (session_id, question_id, answer_index, is_correct)
+  - [ ] `users` (user_id, optional username) [if supporting usernames]
+- [ ] Connect backend to Supabase (install and configure supabase-js)
+- [ ] Add Supabase credentials to `.env`
+
+### 3. API & Server Setup
+- [ ] Set up Express server
+- [ ] Define API structure (REST)
+- [ ] Implement middleware for JSON parsing and error handling
+
+### 4. User Role Selection & Identification
+- [ ] Document in README how to use API as 'game master' or 'user' (no auth, just endpoint usage)
+- [ ] Implement user identification:
+  - [ ] Generate unique user ID for each new user/session
+  - [ ] (Optional) Allow username field for user tracking
+  - [ ] Document user identification in API/README
+
+## Day 2: Core Features & Testing
+
+### 5. Trivia Question Management (Game Master)
+- [ ] **Create** Trivia Question endpoint
+  - [ ] Validate required fields
+  - [ ] Allow 2–4 possible answers
+  - [ ] Store correct answer as index/key
+  - [ ] Tag if question is AI-generated
+- [ ] **Read** all Trivia Questions endpoint
+- [ ] **Update** Trivia Question endpoint
+  - [ ] Validate required fields
+  - [ ] Allow 2–4 possible answers
+  - [ ] Store correct answer as index/key
+  - [ ] Prevent update if question is in use in an active session (return error)
+  - [ ] Return error if not found
+- [ ] **Delete** Trivia Question endpoint
+  - [ ] Prevent deletion if question is in use in an active session (return error)
+  - [ ] Return error if not found
+
+### 6. Game Session Management (User)
+- [ ] **Create** new game session endpoint
+  - [ ] Allow multiple concurrent sessions per user
+  - [ ] Select 16 questions across 4 categories
+  - [ ] Generate unique session ID
+  - [ ] Initialize game state
+- [ ] **Submit Answer** endpoint
+  - [ ] Prevent duplicate submissions for same question/session
+  - [ ] Enforce one attempt per question per session
+  - [ ] Update score only for correct answers (no penalty for wrong answers)
+  - [ ] Return current game state (right/wrong, progress)
+- [ ] **Game Completion** logic
+  - [ ] Mark game as complete after all questions attempted
+  - [ ] Determine win/loss (80% correct = win)
+- [ ] **List all game states** (Game Master)
+  - [ ] Return all sessions (except deleted ones)
+
+### 7. Error Handling & Validation
+- [ ] Implement consistent JSON error responses (status, error, message)
+- [ ] Validate all required fields for create/update endpoints
+- [ ] Handle not found and invalid operations
+- [ ] Return specific error if game master tries to update/delete a question in use
+
+### 8. Testing & Documentation
+- [ ] Write sample unit tests (Jest) for core logic and endpoints
+- [ ] Document API endpoints and usage in README
+- [ ] Add instructions for running locally and setting up Supabase
+- [ ] Provide Postman collection or example requests in README
+- [ ] Document all clarifications and rules in README (user ID, answer format, session rules, etc.)
+
+## Optional Features
+
+### Trivia Session Timer
+- [ ] Add `started_at` and `time_limit` fields to `game_sessions` table
+- [ ] Enforce time limit on answer submission (check if session expired)
+- [ ] Mark session as completed if time expires
+- [ ] Return appropriate error/message if user tries to answer after time is up
+- [ ] Document timer behavior and usage in README
+
+## Bonus (If Time Permits)
+- [ ] GenAI-powered trivia generation endpoint
+- [ ] Persist sessions robustly for server restarts
+
+---
+
+**Legend:**
+- [ ] = To Do
+- [x] = Done
+
+**Tip:** Prioritize core features first. Use Postman to test all endpoints as you build them.
+description:
+globs:
+alwaysApply: false
+---

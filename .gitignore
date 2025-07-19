@@ -1,0 +1,60 @@
+# Ignore all files in the .env directory
+.env/
+
+# Ignore all files in the .env.local directory
+.env.local/
+
+# Ignore all files in the .env.development.local directory
+.env.development.local/
+
+# Ignore all files in the .env.test.local directory
+.env.test.local/
+
+# Ignore all files in the rules folder
+rules/
+
+# Ignore node_modules folder
+node_modules/
+
+# Ignore dist folder
+dist/
+
+# Ignore .DS_Store file
+.DS_Store
+
+# Ignore build and out folders
+build/
+out/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor folders
+.vscode/
+.idea/
+*.swp
+
+# Test coverage
+coverage/
+
+# Supabase (if using CLI)
+.supabase/
+
+# Misc
+*.log
+
