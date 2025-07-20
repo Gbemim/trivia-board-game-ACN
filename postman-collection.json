@@ -121,7 +121,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_id\": \"user123\",\n  \"username\": \"testuser\"\n}"
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"time_limit\": 1800\n}"
             },
             "url": {
               "raw": "{{base_url}}/sessions",

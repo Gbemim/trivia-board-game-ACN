@@ -24,6 +24,7 @@ export interface GameSession {
   status: 'in_progress' | 'user_lost' | 'user_won' | 'expired';
   current_score: number; // Number of correct answers (1 point per correct answer)
   questions_answered: number; // How many questions the user has answered
+  // selected_questions?: string[]; // Array of question IDs for this session (16 questions) - TODO: Add to DB schema
   started_at: string; // Has DEFAULT now(), so it's always set
   time_limit?: number | null; // Can be null in database
   completed_at?: string | null; // Can be null in database
@@ -97,6 +98,65 @@ export class DatabaseService {
 
     if (error && error.code !== 'PGRST116') throw error;
     return data;
+  }
+
+  static async getQuestionsByCategory(category: string, limit?: number): Promise<TriviaQuestion[]> {
+    let query = supabase
+      .from('trivia_questions')
+      .select('*')
+      .eq('category', category)
+      .order('created_at', { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getRandomQuestionsForSession(): Promise<TriviaQuestion[]> {
+    // Get all available categories
+    const { data: categories, error: categoriesError } = await supabase
+      .from('trivia_questions')
+      .select('category')
+      .order('category');
+
+    if (categoriesError) throw categoriesError;
+
+    // Get unique categories
+    const uniqueCategories = Array.from(new Set((categories || []).map(q => q.category)));
+    
+    if (uniqueCategories.length < 4) {
+      throw new Error(`Insufficient categories available. Need at least 4 categories, found ${uniqueCategories.length}`);
+    }
+
+    // Select exactly 4 categories (use first 4 if more available)
+    const selectedCategories = uniqueCategories.slice(0, 4);
+    const selectedQuestions: TriviaQuestion[] = [];
+
+    // Get 4 random questions from each of the 4 categories
+    for (const category of selectedCategories) {
+      const { data: categoryQuestions, error } = await supabase
+        .from('trivia_questions')
+        .select('*')
+        .eq('category', category)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!categoryQuestions || categoryQuestions.length < 4) {
+        throw new Error(`Insufficient questions in category "${category}". Need at least 4 questions, found ${categoryQuestions?.length || 0}`);
+      }
+
+      // Randomly select 4 questions from this category
+      const shuffled = categoryQuestions.sort(() => 0.5 - Math.random());
+      selectedQuestions.push(...shuffled.slice(0, 4));
+    }
+
+    // Shuffle the final 16 questions
+    return selectedQuestions.sort(() => 0.5 - Math.random());
   }
 
   static async isQuestionInUse(questionId: string): Promise<boolean> {
