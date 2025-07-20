@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase';
 // Types for our database tables
 export interface User {
   user_id: string;
-  username?: string;
+  username?: string | null; // Can be null in database
 }
 
 export interface TriviaQuestion {
@@ -13,7 +13,7 @@ export interface TriviaQuestion {
   answers: string[];
   correct_answer_index: number;
   score: number;
-  is_ai_generated: boolean;
+  is_ai_generated?: boolean; // Optional, defaults to false
   created_at: string;
   updated_at: string;
 }
@@ -21,12 +21,12 @@ export interface TriviaQuestion {
 export interface GameSession {
   id: string;
   user_id: string;
-  status: 'in_progress' | 'user_lost' | 'user_won' | 'completed' | 'expired';
+  status: 'in_progress' | 'user_lost' | 'user_won' | 'expired';
   current_score: number;
-  attempts: number;
-  started_at: string;
-  time_limit?: number;
-  completed_at?: string;
+  questions_answered: number; // How many questions the user has answered
+  started_at: string; // Has DEFAULT now(), so it's always set
+  time_limit?: number | null; // Can be null in database
+  completed_at?: string | null; // Can be null in database
 }
 
 export interface UserAnswer {
