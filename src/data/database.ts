@@ -13,7 +13,6 @@ export interface TriviaQuestion {
   question: string;
   answers: string[];
   correct_answer_index: number;
-  score: number;
   is_ai_generated?: boolean; // Optional, defaults to false
   created_at: string;
   updated_at: string;
@@ -23,7 +22,7 @@ export interface GameSession {
   id: string;
   user_id: string;
   status: 'in_progress' | 'user_lost' | 'user_won' | 'expired';
-  current_score: number;
+  current_score: number; // Number of correct answers (1 point per correct answer)
   questions_answered: number; // How many questions the user has answered
   started_at: string; // Has DEFAULT now(), so it's always set
   time_limit?: number | null; // Can be null in database
