@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 // Types for our database tables
 export interface User {
@@ -42,9 +43,12 @@ export interface UserAnswer {
 export class DatabaseService {
   // User operations
   static async createUser(username?: string): Promise<User> {
+    // Generate unique user ID
+    const user_id = uuidv4();
+    
     const { data, error } = await supabase
       .from('users')
-      .insert([{ username }])
+      .insert([{ user_id, username }])
       .select()
       .single();
 
