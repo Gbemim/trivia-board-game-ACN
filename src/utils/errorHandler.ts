@@ -5,7 +5,6 @@ export function errorHandler(
   err: Error, 
   req: express.Request, 
   res: express.Response, 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: express.NextFunction
 ): void {
   console.error(err); // Log the error for debugging
