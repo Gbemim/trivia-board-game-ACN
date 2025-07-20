@@ -484,9 +484,137 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
 });
 
 // List all sessions (game master)
-sessionsRouter.get('/', (req: Request, res: Response) => {
-  // TODO: List all sessions (game master)
-  res.json({ message: 'List all sessions - not implemented yet' });
+sessionsRouter.get('/', async (req: Request, res: Response) => {
+  try {
+    // Optional query parameters for filtering
+    const { status, user_id, limit } = req.query;
+
+    // Get all game sessions
+    let sessions = await DatabaseService.getAllGameSessions();
+
+    // Apply filters if provided
+    if (status && typeof status === 'string') {
+      sessions = sessions.filter(session => session.status === status);
+    }
+
+    if (user_id && typeof user_id === 'string') {
+      sessions = sessions.filter(session => session.user_id === user_id);
+    }
+
+    // Apply limit if provided
+    if (limit && typeof limit === 'string') {
+      const limitNum = parseInt(limit, 10);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        sessions = sessions.slice(0, limitNum);
+      }
+    }
+
+    // Get user information for each session
+    const sessionsWithUserInfo = await Promise.all(
+      sessions.map(async (session) => {
+        try {
+          const user = await DatabaseService.getUser(session.user_id);
+          const userAnswers = await DatabaseService.getUserAnswers(session.id);
+          
+          return {
+            session_id: session.id,
+            user_id: session.user_id,
+            username: user?.username || 'Unknown User',
+            status: session.status,
+            progress: {
+              questions_answered: session.questions_answered,
+              total_questions: 16,
+              current_score: session.current_score,
+              progress_percentage: Math.round((session.questions_answered / 16) * 100),
+              score_percentage: session.questions_answered > 0 ? Math.round((session.current_score / 16) * 100) : 0
+            },
+            timing: {
+              started_at: session.started_at,
+              completed_at: session.completed_at,
+              time_limit: session.time_limit
+            },
+            game_result: session.status === 'user_won' ? 'WIN' : 
+                        session.status === 'user_lost' ? 'LOSS' : 
+                        session.status === 'expired' ? 'EXPIRED' : 'IN_PROGRESS'
+          };
+        } catch (userError) {
+          // If user lookup fails, still return session data
+          return {
+            session_id: session.id,
+            user_id: session.user_id,
+            username: 'Unknown User',
+            status: session.status,
+            progress: {
+              questions_answered: session.questions_answered,
+              total_questions: 16,
+              current_score: session.current_score,
+              progress_percentage: Math.round((session.questions_answered / 16) * 100),
+              score_percentage: session.questions_answered > 0 ? Math.round((session.current_score / 16) * 100) : 0
+            },
+            timing: {
+              started_at: session.started_at,
+              completed_at: session.completed_at,
+              time_limit: session.time_limit
+            },
+            game_result: session.status === 'user_won' ? 'WIN' : 
+                        session.status === 'user_lost' ? 'LOSS' : 
+                        session.status === 'expired' ? 'EXPIRED' : 'IN_PROGRESS'
+          };
+        }
+      })
+    );
+
+    // Calculate summary statistics (from all sessions, not just filtered ones)
+    const allSessions = await DatabaseService.getAllGameSessions();
+    const totalSessions = allSessions.length;
+    const completedSessions = allSessions.filter(s => s.status === 'user_won' || s.status === 'user_lost').length;
+    const activeSessions = allSessions.filter(s => s.status === 'in_progress').length;
+    const wonSessions = allSessions.filter(s => s.status === 'user_won').length;
+    const lostSessions = allSessions.filter(s => s.status === 'user_lost').length;
+
+    res.json({
+      status: 'success',
+      message: 'All game sessions retrieved successfully',
+      data: {
+        filters_applied: {
+          status: status || null,
+          user_id: user_id || null,
+          limit: limit || null
+        },
+        summary: {
+          total_sessions: totalSessions,
+          active_sessions: activeSessions,
+          completed_sessions: completedSessions,
+          won_sessions: wonSessions,
+          lost_sessions: lostSessions,
+          win_rate: completedSessions > 0 ? Math.round((wonSessions / completedSessions) * 100) : 0,
+          filtered_results: sessions.length
+        },
+        sessions: sessionsWithUserInfo
+      }
+    });
+
+  } catch (error) {
+    console.error('Error retrieving all sessions:', error);
+
+    // Handle specific database errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const dbError = error as { code: string; message?: string; details?: string };
+      
+      return res.status(400).json({
+        status: 'error',
+        message: 'Database error',
+        error: dbError.message || 'Unknown database error'
+      });
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve game sessions',
+      error: errorMessage
+    });
+  }
 });
 
 export { sessionsRouter };
