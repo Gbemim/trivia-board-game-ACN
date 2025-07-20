@@ -24,7 +24,7 @@ export interface GameSession {
   status: 'in_progress' | 'user_lost' | 'user_won' | 'expired';
   current_score: number; // Number of correct answers (1 point per correct answer)
   questions_answered: number; // How many questions the user has answered
-  // selected_questions?: string[]; // Array of question IDs for this session (16 questions) - TODO: Add to DB schema
+  selected_questions?: string[]; // Array of question IDs for this session (16 questions)
   started_at: string; // Has DEFAULT now(), so it's always set
   time_limit?: number | null; // Can be null in database
   completed_at?: string | null; // Can be null in database
@@ -226,6 +226,42 @@ export class DatabaseService {
     return data;
   }
 
+  static async getGameSessionById(id: string): Promise<GameSession | null> {
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async getSessionQuestions(sessionId: string): Promise<TriviaQuestion[]> {
+    // Get the session with selected questions
+    const session = await this.getGameSessionById(sessionId);
+    if (!session || !session.selected_questions) {
+      return [];
+    }
+
+    // Get the actual question details
+    const { data, error } = await supabase
+      .from('trivia_questions')
+      .select('*')
+      .in('id', session.selected_questions);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async isQuestionInSession(sessionId: string, questionId: string): Promise<boolean> {
+    const session = await this.getGameSessionById(sessionId);
+    if (!session || !session.selected_questions) {
+      return false;
+    }
+    return session.selected_questions.includes(questionId);
+  }
+
   // User Answer operations
   static async createUserAnswer(answer: Omit<UserAnswer, 'id' | 'answered_at'>): Promise<UserAnswer> {
     const { data, error } = await supabase
@@ -247,5 +283,17 @@ export class DatabaseService {
 
     if (error) throw error;
     return data || [];
+  }
+
+  static async getUserAnswer(sessionId: string, questionId: string): Promise<UserAnswer | null> {
+    const { data, error } = await supabase
+      .from('user_answers')
+      .select('*')
+      .eq('session_id', sessionId)
+      .eq('question_id', questionId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
   }
 } 

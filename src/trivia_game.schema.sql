@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   status TEXT NOT NULL CHECK (status IN ('in_progress', 'user_lost', 'user_won', 'expired')),
   current_score INTEGER NOT NULL DEFAULT 0,
   questions_answered INTEGER NOT NULL DEFAULT 0,
+  selected_questions JSONB, -- Array of question IDs for this session (16 questions)
   started_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   time_limit INTEGER, -- in seconds, nullable if not using timer (no NOT NULL constraint)
   completed_at TIMESTAMP WITH TIME ZONE -- nullable, only set when game ends (no NOT NULL constraint)

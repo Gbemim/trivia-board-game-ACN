@@ -146,9 +146,9 @@
               "raw": "{\n  \"question_id\": \"{{question_id}}\",\n  \"answer_index\": 0\n}"
             },
             "url": {
-              "raw": "{{base_url}}/sessions/{{session_id}}/answers",
+              "raw": "{{base_url}}/sessions/{{session_id}}/answer",
               "host": ["{{base_url}}"],
-              "path": ["sessions", "{{session_id}}", "answers"]
+              "path": ["sessions", "{{session_id}}", "answer"]
             },
             "description": "Submit an answer for a specific question in a session"
           }
