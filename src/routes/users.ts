@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { DatabaseService } from '../data/database';
+import { handleDatabaseError, handleUserError } from '../utils/errorHandler';
 import { isValidUserId, isValidUsername } from '../utils/userHelpers';
 
 const usersRouter = express.Router();
@@ -42,41 +43,7 @@ usersRouter.post('/', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error creating user:', error);
-    
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      if (dbError.code === '23505') {
-        return res.status(409).json({
-          status: 'error',
-          message: 'Username already exists',
-          error: 'A user with this username already exists. Please choose a different username.'
-        });
-      }
-      
-      if (dbError.code === '42501') {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Permission denied',
-          error: 'Insufficient permissions to create user. Please contact administrator.'
-        });
-      }
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to create user',
-      error: errorMessage
-    });
+    handleUserError(error, res, 'create user');
   }
 });
 
@@ -123,13 +90,7 @@ usersRouter.get('/:id', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error retrieving user:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve user',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'retrieve user');
   }
 });
 
@@ -181,13 +142,7 @@ usersRouter.get('/:id/sessions', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error retrieving user sessions:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve user sessions',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'retrieve user sessions');
   }
 });
 

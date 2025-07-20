@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { DatabaseService } from '../data/database';
+import { handleDatabaseError } from '../utils/errorHandler';
 
 const questionsRouter = express.Router();
 
@@ -9,7 +10,7 @@ const questionsRouter = express.Router();
  */
 questionsRouter.post('/', async (req: Request, res: Response) => {
   try {
-    const { category, question, answers, correct_answer_index, is_ai_generated } = req.body;
+    const { category, question, answers, correct_answer_index, score, is_ai_generated } = req.body;
 
     // Validate required fields
     if (!category || typeof category !== 'string' || category.trim().length === 0) {
@@ -74,6 +75,23 @@ questionsRouter.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Validate score (required field)
+    if (score === undefined || typeof score !== 'number' || !Number.isInteger(score)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Score is required',
+        error: 'Score must be an integer'
+      });
+    }
+
+    if (score < 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid score',
+        error: 'Score must be a non-negative integer'
+      });
+    }
+
     // Validate is_ai_generated (optional, defaults to false)
     if (is_ai_generated !== undefined && typeof is_ai_generated !== 'boolean') {
       return res.status(400).json({
@@ -89,6 +107,7 @@ questionsRouter.post('/', async (req: Request, res: Response) => {
       question: question.trim(),
       answers: answers.map((answer: string) => answer.trim()),
       correct_answer_index,
+      score,
       is_ai_generated: is_ai_generated || false
     };
 
@@ -100,25 +119,7 @@ questionsRouter.post('/', async (req: Request, res: Response) => {
       data: newQuestion
     });
   } catch (error) {
-    console.error('Error creating trivia question:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to create trivia question',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'create trivia question');
   }
 });
 
@@ -139,25 +140,7 @@ questionsRouter.get('/', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error retrieving trivia questions:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve trivia questions',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'retrieve trivia questions');
   }
 });
 
@@ -190,13 +173,7 @@ questionsRouter.get('/:id', async (req: Request, res: Response) => {
       data: question
     });
   } catch (error) {
-    console.error('Error retrieving question:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve question',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'retrieve question');
   }
 });
 
@@ -204,7 +181,7 @@ questionsRouter.get('/:id', async (req: Request, res: Response) => {
 questionsRouter.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { category, question, answers, correct_answer_index, is_ai_generated } = req.body;
+    const { category, question, answers, correct_answer_index, score, is_ai_generated } = req.body;
 
     // Validate question ID
     if (!id || typeof id !== 'string' || id.trim().length === 0) {
@@ -318,6 +295,27 @@ questionsRouter.put('/:id', async (req: Request, res: Response) => {
       updates.correct_answer_index = correct_answer_index;
     }
 
+    // Validate score if provided
+    if (score !== undefined) {
+      if (typeof score !== 'number' || !Number.isInteger(score)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid score',
+          error: 'Score must be an integer'
+        });
+      }
+
+      if (score < 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid score',
+          error: 'Score must be a non-negative integer'
+        });
+      }
+
+      updates.score = score;
+    }
+
     // Validate is_ai_generated if provided
     if (is_ai_generated !== undefined) {
       if (typeof is_ai_generated !== 'boolean') {
@@ -348,25 +346,7 @@ questionsRouter.put('/:id', async (req: Request, res: Response) => {
       data: updatedQuestion
     });
   } catch (error) {
-    console.error('Error updating trivia question:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to update trivia question',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'update trivia question');
   }
 });
 
@@ -416,25 +396,7 @@ questionsRouter.delete('/:id', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error deleting trivia question:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to delete trivia question',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'delete trivia question');
   }
 });
 

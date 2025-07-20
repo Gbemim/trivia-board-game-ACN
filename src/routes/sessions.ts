@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { DatabaseService } from '../data/database';
+import { handleDatabaseError } from '../utils/errorHandler';
 import { isValidUserId } from '../utils/userHelpers';
 
 const sessionsRouter = express.Router();
@@ -91,6 +92,7 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
           category: q.category,
           question: q.question,
           answers: q.answers,
+          score: q.score,
           // Note: correct_answer_index is not included in session creation response for security
         })),
         started_at: session.started_at,
@@ -98,32 +100,15 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
         session_rules: {
           total_questions: 16,
           questions_per_category: 4,
-          win_condition: "80% correct answers (13 out of 16)",
-          scoring: "1 point per correct answer, 0 for incorrect",
+          win_condition: "80% of total possible score points",
+          scoring: "Variable points per question based on difficulty/weight (see question.score field)",
+          scoring_note: "Each question has its own score value. Win by earning 80% of total possible points.",
           note: "Answer each question by submitting to POST /sessions/{session_id}/answer"
         }
       }
     });
   } catch (error) {
-    console.error('Error creating game session:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to create game session',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'create game session');
   }
 });
 
@@ -168,6 +153,7 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
           category: question.category,
           question: question.question,
           answers: question.answers,
+          score: question.score,
           answered: true,
           user_answer_index: userAnswer.answer_index,
           user_answer: question.answers[userAnswer.answer_index],
@@ -182,15 +168,31 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
           category: question.category,
           question: question.question,
           answers: question.answers,
+          score: question.score,
           answered: false
         };
       }
     });
 
-    // Calculate progress
+    // Calculate progress with proper score calculation
     const totalQuestions = sessionQuestions.length;
     const questionsAnswered = userAnswers.length;
-    const currentScore = userAnswers.filter(answer => answer.is_correct).length;
+    
+    // Calculate actual score based on question weights
+    let currentScore = 0;
+    let totalPossibleScore = 0;
+    
+    for (const sessionQuestion of sessionQuestions) {
+      totalPossibleScore += sessionQuestion.score;
+      
+      // Find if this question was answered correctly
+      const userAnswer = userAnswers.find(answer => answer.question_id === sessionQuestion.id);
+      if (userAnswer && userAnswer.is_correct) {
+        currentScore += sessionQuestion.score;
+      }
+    }
+    
+    const scorePercentage = totalPossibleScore > 0 ? (currentScore / totalPossibleScore) * 100 : 0;
     
     res.json({
       status: 'success',
@@ -211,40 +213,23 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
           questions_answered: questionsAnswered,
           total_questions: totalQuestions,
           current_score: currentScore,
+          total_possible_score: totalPossibleScore,
           progress_percentage: Math.round((questionsAnswered / totalQuestions) * 100),
           questions_remaining: totalQuestions - questionsAnswered,
-          score_percentage: totalQuestions > 0 ? Math.round((currentScore / totalQuestions) * 100) : 0
+          score_percentage: Math.round(scorePercentage)
         },
         questions: questionsWithStatus,
         game_rules: {
           total_questions: totalQuestions,
-          win_condition: "80% correct answers",
-          win_threshold: Math.ceil(totalQuestions * 0.8),
-          scoring: "1 point per correct answer, 0 for incorrect"
+          win_condition: "80% of total possible score points",
+          win_threshold: `${Math.round(totalPossibleScore * 0.8)} out of ${totalPossibleScore} points`,
+          scoring: "Variable points per question based on difficulty/weight (see question.score field)"
         }
       }
     });
 
   } catch (error) {
-    console.error('Error retrieving session details:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve session details',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'retrieve session details');
   }
 });
 
@@ -367,21 +352,40 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
       is_correct: isCorrect
     });
 
-    // Get current session progress
+    // Get current session progress with proper score calculation
     const currentAnswers = await DatabaseService.getUserAnswers(sessionId);
     const questionsAnswered = currentAnswers.length;
-    const currentScore = currentAnswers.filter(answer => answer.is_correct).length;
+    
+    // Calculate actual score based on question weights
+    let currentScore = 0;
+    let totalPossibleScore = 0;
+    
+    // Get all session questions to calculate total possible score and actual score
+    const sessionQuestions = await DatabaseService.getSessionQuestions(sessionId);
+    
+    for (const sessionQuestion of sessionQuestions) {
+      totalPossibleScore += sessionQuestion.score;
+      
+      // Find if this question was answered correctly
+      const userAnswer = currentAnswers.find(answer => answer.question_id === sessionQuestion.id);
+      if (userAnswer && userAnswer.is_correct) {
+        currentScore += sessionQuestion.score;
+      }
+    }
 
-    // Check if game is complete (assuming 16 questions total)
-    const totalQuestions = 16;
+    // Check if game is complete
+    const totalQuestions = sessionQuestions.length;
     const isGameComplete = questionsAnswered >= totalQuestions;
-    const winThreshold = Math.ceil(totalQuestions * 0.8); // 80% to win (13 out of 16)
+    
+    // Calculate win condition based on score percentage (80% of total possible score)
+    const scorePercentage = totalPossibleScore > 0 ? (currentScore / totalPossibleScore) * 100 : 0;
+    const winThreshold = 80; // 80% of total possible score
     
     let newStatus: 'in_progress' | 'user_lost' | 'user_won' | 'expired' = session.status;
     let completedAt = session.completed_at;
 
     if (isGameComplete) {
-      newStatus = currentScore >= winThreshold ? 'user_won' : 'user_lost';
+      newStatus = scorePercentage >= winThreshold ? 'user_won' : 'user_lost';
       completedAt = new Date().toISOString();
     }
 
@@ -398,6 +402,8 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
       questions_answered: questionsAnswered,
       total_questions: totalQuestions,
       current_score: currentScore,
+      total_possible_score: totalPossibleScore,
+      score_percentage: Math.round(scorePercentage),
       progress_percentage: Math.round((questionsAnswered / totalQuestions) * 100),
       questions_remaining: totalQuestions - questionsAnswered
     };
@@ -420,6 +426,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
         game_complete: boolean;
         final_results?: {
           final_score: number;
+          total_possible_score: number;
           total_questions: number;
           score_percentage: number;
           result: string;
@@ -451,35 +458,18 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     if (isGameComplete) {
       response.data.final_results = {
         final_score: currentScore,
+        total_possible_score: totalPossibleScore,
         total_questions: totalQuestions,
-        score_percentage: Math.round((currentScore / totalQuestions) * 100),
+        score_percentage: Math.round(scorePercentage),
         result: newStatus === 'user_won' ? 'Congratulations! You won!' : 'Game over. Better luck next time!',
-        win_threshold: `${winThreshold} out of ${totalQuestions} (80%)`
+        win_threshold: `${winThreshold}% of total possible score (${Math.round(totalPossibleScore * 0.8)} out of ${totalPossibleScore} points)`
       };
     }
 
     res.json(response);
 
   } catch (error) {
-    console.error('Error submitting answer:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to submit answer',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'submit answer');
   }
 });
 
@@ -514,7 +504,6 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
       sessions.map(async (session) => {
         try {
           const user = await DatabaseService.getUser(session.user_id);
-          const userAnswers = await DatabaseService.getUserAnswers(session.id);
           
           return {
             session_id: session.id,
@@ -537,7 +526,7 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
                         session.status === 'user_lost' ? 'LOSS' : 
                         session.status === 'expired' ? 'EXPIRED' : 'IN_PROGRESS'
           };
-        } catch (userError) {
+        } catch {
           // If user lookup fails, still return session data
           return {
             session_id: session.id,
@@ -595,25 +584,7 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Error retrieving all sessions:', error);
-
-    // Handle specific database errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      const dbError = error as { code: string; message?: string; details?: string };
-      
-      return res.status(400).json({
-        status: 'error',
-        message: 'Database error',
-        error: dbError.message || 'Unknown database error'
-      });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve game sessions',
-      error: errorMessage
-    });
+    handleDatabaseError(error, res, 'retrieve game sessions');
   }
 });
 

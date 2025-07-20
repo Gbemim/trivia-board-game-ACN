@@ -228,6 +228,16 @@ Content-Type: application/json
 - **Validation**: All user IDs are validated for proper UUID format
 - **No Authentication**: Open access system - no passwords or tokens required
 
+## Game Rules & Scoring
+
+- **Question Selection**: Each game session selects 4 random questions from each category
+- **Weighted Scoring**: Each question has its own score value (stored in `question.score` field)
+- **Win Condition**: Achieve 80% of the total possible score points
+- **Win Calculation**: Sum of all score values from correctly answered questions
+- **Example**: If total possible score is 100 points, you need 80+ points to win
+- **Session Status**: Automatically updated to 'user_won' or 'user_lost' when all questions are answered
+- **Progress Tracking**: Real-time score percentage and questions remaining available via progress endpoint
+
 ## 📋 Notes
 - **No Authentication**: Open access system - anyone can use any endpoint
 - **TypeScript First**: Pure TypeScript development with compiled JavaScript for production
