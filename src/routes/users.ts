@@ -168,8 +168,7 @@ usersRouter.get('/:id/sessions', async (req: Request, res: Response) => {
     }
 
     // Get all sessions for this user
-    const allSessions = await DatabaseService.getAllGameSessions();
-    const userSessions = allSessions.filter(session => session.user_id === id);
+    const userSessions = await DatabaseService.getUserSessions(id);
 
     res.json({
       status: 'success',

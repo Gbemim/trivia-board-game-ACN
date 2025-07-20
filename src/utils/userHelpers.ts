@@ -27,12 +27,3 @@ export function isValidUserId(userId: string): boolean {
 export function isValidUsername(username: string): boolean {
   return typeof username === 'string' && username.trim().length > 0 && username.trim().length <= 50;
 }
-
-// /**
-//  * Sanitizes a username by trimming whitespace
-//  * @param username - The username to sanitize
-//  * @returns The sanitized username
-//  */
-// export function sanitizeUsername(username: string): string {
-//   return username.trim();
-// }

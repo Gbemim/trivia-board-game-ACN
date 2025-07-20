@@ -17,3 +17,27 @@ export function errorHandler(
     error: process.env.NODE_ENV === 'development' ? err : undefined,
   });
 }
+
+// Utility function for handling database errors consistently
+export function handleDatabaseError(error: unknown, res: express.Response, operation: string): void {
+  console.error(`Error ${operation}:`, error);
+
+  // Handle specific database errors
+  if (error && typeof error === 'object' && 'code' in error) {
+    const dbError = error as { code: string; message?: string; details?: string };
+    
+    res.status(400).json({
+      status: 'error',
+      message: 'Database error',
+      error: dbError.message || 'Unknown database error'
+    });
+    return;
+  }
+
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  res.status(500).json({
+    status: 'error',
+    message: `Failed to ${operation}`,
+    error: errorMessage
+  });
+}

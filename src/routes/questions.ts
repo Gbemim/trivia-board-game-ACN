@@ -162,9 +162,42 @@ questionsRouter.get('/', async (req: Request, res: Response) => {
 });
 
 // Get a single trivia question
-questionsRouter.get('/:id', (req: Request, res: Response) => {
-  // TODO: Get a single trivia question
-  res.json({ message: 'Get question by ID - not implemented yet' });
+questionsRouter.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string' || id.trim().length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Question ID is required',
+        error: 'Question ID must be a non-empty string'
+      });
+    }
+
+    const question = await DatabaseService.getTriviaQuestionById(id);
+    
+    if (!question) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Question not found',
+        error: `Trivia question with ID ${id} does not exist`
+      });
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Question retrieved successfully',
+      data: question
+    });
+  } catch (error) {
+    console.error('Error retrieving question:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve question',
+      error: errorMessage
+    });
+  }
 });
 
 // Update a trivia question

@@ -100,21 +100,7 @@ export class DatabaseService {
     return data;
   }
 
-  static async getQuestionsByCategory(category: string, limit?: number): Promise<TriviaQuestion[]> {
-    let query = supabase
-      .from('trivia_questions')
-      .select('*')
-      .eq('category', category)
-      .order('created_at', { ascending: false });
 
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
-  }
 
   static async getRandomQuestionsForSession(): Promise<TriviaQuestion[]> {
     // Get all available categories
@@ -208,6 +194,17 @@ export class DatabaseService {
     const { data, error } = await supabase
       .from('game_sessions')
       .select('*')
+      .order('started_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getUserSessions(userId: string): Promise<GameSession[]> {
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .select('*')
+      .eq('user_id', userId)
       .order('started_at', { ascending: false });
 
     if (error) throw error;
