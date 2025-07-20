@@ -1,15 +1,17 @@
 {
   "name": "liquids_challenge",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "TypeScript Trivia Game API",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "ts-node src/index.ts",
+    "start:prod": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "lint": "eslint 'src/**/*.{js,ts}'",
-    "format": "prettier --write 'src/**/*.{js,ts,json,md}'"
+    "lint": "eslint 'src/**/*.ts'",
+    "format": "prettier --write 'src/**/*.{ts,json,md}'",
+    "clean": "rm -rf dist"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

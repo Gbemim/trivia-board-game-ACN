@@ -52,6 +52,12 @@ Thumbs.db
 # Test coverage
 coverage/
 
+# Compiled JavaScript files
+*.js
+*.js.map
+dist/
+build/
+
 # Supabase (if using CLI)
 .supabase/
 

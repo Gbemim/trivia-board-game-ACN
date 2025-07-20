@@ -11,6 +11,7 @@ This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, E
 
 ### Prerequisites
 - Node.js (v18+ recommended)
+- npm or yarn
 - Supabase project (with tables set up as per `src/trivia_game.schema.sql`)
 
 ### Setup
@@ -27,11 +28,58 @@ This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, E
    PORT=3000
    NODE_ENV=development
    ```
-4. Start the server:
-   ```bash
-   npm run dev
-   ```
-5. The API will be available at `http://localhost:3000/`
+
+### 🏃‍♂️ Running the Application
+
+#### Development Mode (TypeScript)
+```bash
+npm start        # Quick start for development
+# or
+npm run dev      # Same as npm start
+```
+
+#### Production Mode (Compiled JavaScript)
+```bash
+npm run build    # Compile TypeScript to JavaScript
+npm run start:prod  # Run compiled version
+```
+
+#### Other Commands
+```bash
+npm run lint     # Check code quality
+npm run format   # Format code with Prettier
+npm run clean    # Remove compiled files
+```
+
+The API will be available at `http://localhost:3000/`
+Health check: `http://localhost:3000/health`
+
+## 📁 Project Structure
+
+```
+src/
+├── index.ts                 # Main application entry point
+├── trivia_game.schema.sql  # Database schema
+├── data/                   # Data access layer
+│   ├── supabase.ts         # Supabase client configuration
+│   └── database.ts         # Database service operations
+├── routes/                 # API route definitions
+│   ├── index.ts            # Route setup and mounting
+│   ├── questions.ts        # Question management endpoints
+│   ├── sessions.ts         # Game session endpoints
+│   ├── users.ts            # User management endpoints
+│   └── health.ts           # Health check endpoint
+└── utils/                  # Utility functions
+    ├── userHelpers.ts      # User validation and helpers
+    └── errorHandler.ts     # Error handling middleware
+```
+
+### 🏗️ Architecture Highlights
+- **Pure TypeScript**: Clean TypeScript source code, compiled JavaScript output
+- **Modular Routes**: Organized by functionality (users, sessions, questions, health)
+- **Data Layer**: Centralized database operations and Supabase configuration
+- **Utilities**: Reusable helper functions and middleware
+- **Clean Separation**: Business logic separated from route definitions
 
 ## API Usage
 
@@ -180,18 +228,46 @@ Content-Type: application/json
 - **Validation**: All user IDs are validated for proper UUID format
 - **No Authentication**: Open access system - no passwords or tokens required
 
-## Notes
-- There is **no authentication**; anyone can use any endpoint.
-- Users must create an account first before starting any game sessions.
-- User IDs are automatically generated using UUID v4 for uniqueness.
-- Username is optional but recommended for better user experience.
-- For more details on the database schema, see `src/trivia_game.schema.sql`.
+## 📋 Notes
+- **No Authentication**: Open access system - anyone can use any endpoint
+- **TypeScript First**: Pure TypeScript development with compiled JavaScript for production
+- **User Registration Required**: Users must create an account before starting game sessions
+- **UUID-based IDs**: All user IDs are automatically generated using UUID v4
+- **Optional Usernames**: Username field is optional but recommended for user experience
+- **Concurrent Sessions**: Each user can have multiple active game sessions
+- **Input Validation**: All inputs are validated for proper format and types
+- **Database Schema**: See `src/trivia_game.schema.sql` for complete database structure
 
-## Development
-- API routes are implemented in `src/index.ts`.
-- Business logic is implemented in `src/services/database.ts`.
-- User utilities are available in `src/utils/userHelpers.ts`.
-- Error handling and JSON parsing middleware are set up in the Express app.
+## 🛠️ Development
 
-## License
+### Tech Stack
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js
+- **Database**: Supabase (PostgreSQL)
+- **Validation**: Custom validation functions
+- **Code Quality**: ESLint + Prettier
+- **Build System**: TypeScript Compiler
+
+### File Organization
+- **Entry Point**: `src/index.ts` - Application setup and middleware
+- **Data Layer**: `src/data/` - Database operations and Supabase client
+- **API Routes**: `src/routes/` - RESTful endpoint definitions
+- **Utilities**: `src/utils/` - Helper functions and middleware
+- **Schema**: `src/trivia_game.schema.sql` - Database structure
+
+### Development Workflow
+1. **Write Code**: Edit TypeScript files in `src/`
+2. **Run Dev Server**: `npm start` (uses ts-node for direct TS execution)
+3. **Lint & Format**: `npm run lint` and `npm run format`
+4. **Build for Production**: `npm run build` (compiles to `dist/`)
+5. **Run Production**: `npm run start:prod`
+
+### Code Quality
+- **Linting**: ESLint with TypeScript rules
+- **Formatting**: Prettier for consistent code style
+- **Type Safety**: Full TypeScript coverage with strict typing
+- **Error Handling**: Centralized error handling middleware
+- **Validation**: Input validation for all endpoints
+
+## 📄 License
 MIT 
