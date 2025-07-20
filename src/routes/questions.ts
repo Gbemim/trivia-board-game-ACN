@@ -338,9 +338,71 @@ questionsRouter.put('/:id', async (req: Request, res: Response) => {
 });
 
 // Delete a trivia question
-questionsRouter.delete('/:id', (req: Request, res: Response) => {
-  // TODO: Delete a trivia question
-  res.json({ message: 'Delete question - not implemented yet' });
+questionsRouter.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Validate question ID
+    if (!id || typeof id !== 'string' || id.trim().length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Question ID is required',
+        error: 'Question ID must be a non-empty string'
+      });
+    }
+
+    // Check if question exists
+    const existingQuestion = await DatabaseService.getTriviaQuestionById(id);
+    if (!existingQuestion) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Question not found',
+        error: `Trivia question with ID ${id} does not exist`
+      });
+    }
+
+    // Check if question is in use by an active session
+    const isInUse = await DatabaseService.isQuestionInUse(id);
+    if (isInUse) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'Cannot delete question in use',
+        error: 'This question is currently being used in an active game session and cannot be deleted'
+      });
+    }
+
+    // Delete the trivia question
+    await DatabaseService.deleteTriviaQuestion(id);
+
+    res.json({
+      status: 'success',
+      message: 'Trivia question deleted successfully',
+      data: {
+        deleted_question_id: id,
+        deleted_question: existingQuestion
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting trivia question:', error);
+
+    // Handle specific database errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const dbError = error as { code: string; message?: string; details?: string };
+      
+      return res.status(400).json({
+        status: 'error',
+        message: 'Database error',
+        error: dbError.message || 'Unknown database error'
+      });
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete trivia question',
+      error: errorMessage
+    });
+  }
 });
 
 export { questionsRouter };
