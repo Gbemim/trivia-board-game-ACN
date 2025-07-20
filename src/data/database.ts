@@ -88,6 +88,29 @@ export class DatabaseService {
     return data || [];
   }
 
+  static async getTriviaQuestionById(id: string): Promise<TriviaQuestion | null> {
+    const { data, error } = await supabase
+      .from('trivia_questions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async isQuestionInUse(questionId: string): Promise<boolean> {
+    // Check if question is used in any active game sessions
+    const { data, error } = await supabase
+      .from('user_answers')
+      .select('session_id, game_sessions!inner(status)')
+      .eq('question_id', questionId)
+      .in('game_sessions.status', ['in_progress']);
+
+    if (error) throw error;
+    return (data || []).length > 0;
+  }
+
   static async updateTriviaQuestion(id: string, updates: Partial<TriviaQuestion>): Promise<TriviaQuestion> {
     const { data, error } = await supabase
       .from('trivia_questions')

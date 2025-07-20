@@ -81,7 +81,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category\": \"Science\",\n  \"question\": \"What is the chemical symbol for gold?\",\n  \"answers\": [\"Au\", \"Ag\", \"Go\", \"Gd\"],\n  \"correct_answer_index\": 0,\n  \"score\": 15,\n  \"is_ai_generated\": false\n}"
+              "raw": "{\n  \"category\": \"Science\",\n  \"question\": \"What is the chemical symbol for gold?\",\n  \"answers\": [\"Au\", \"Ag\", \"Go\", \"Gd\"],\n  \"correct_answer_index\": 0,\n  \"is_ai_generated\": false\n}"
             },
             "url": {
               "raw": "{{base_url}}/questions/{{question_id}}",
