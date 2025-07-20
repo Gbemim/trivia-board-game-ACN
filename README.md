@@ -220,6 +220,153 @@ Content-Type: application/json
 }
 ```
 
+## Complete API Endpoints Reference
+
+### 🔗 Postman Collection
+A complete Postman collection is available in `postman-collection.json` with all endpoints pre-configured. Import this file into Postman for easy testing.
+
+**Environment Variables:**
+- `base_url`: `http://localhost:3000` (or your server URL)
+
+### 👥 User Management Endpoints
+
+| Method | Endpoint | Description | Required Fields |
+|--------|----------|-------------|-----------------|
+| `POST` | `/users` | Create a new user account | `username` (optional) |
+| `GET` | `/users/:id` | Get user information by ID | - |
+| `GET` | `/users/:id/sessions` | Get all sessions for a user | - |
+
+### ❓ Question Management Endpoints (Game Master)
+
+| Method | Endpoint | Description | Required Fields |
+|--------|----------|-------------|-----------------|
+| `POST` | `/questions` | Create a new trivia question | `category`, `question`, `answers`, `correct_answer_index`, `score` |
+| `GET` | `/questions` | Get all trivia questions | - |
+| `GET` | `/questions/:id` | Get specific question by ID | - |
+| `PUT` | `/questions/:id` | Update existing question | Any field to update |
+| `DELETE` | `/questions/:id` | Delete a question | - |
+
+### 🎮 Game Session Endpoints (Users)
+
+| Method | Endpoint | Description | Required Fields |
+|--------|----------|-------------|-----------------|
+| `POST` | `/sessions` | Create new game session | `user_id` |
+| `GET` | `/sessions/:id` | Get session progress and details | - |
+| `POST` | `/sessions/:id/answer` | Submit answer for a question | `question_id`, `answer_index` |
+| `GET` | `/sessions` | Get all sessions (Game Master) | - |
+
+### 🔧 System Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check endpoint |
+| `GET` | `/` | Root endpoint with API info |
+
+## Testing
+
+### 🧪 Unit Tests
+
+The project includes comprehensive unit tests using Jest and Supertest:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (for development)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+**Test Coverage:**
+- ✅ **User Helpers**: UUID validation, username validation
+- ✅ **Error Handlers**: Database error handling, user-specific errors
+- ✅ **Question API**: CRUD operations, validation, error responses
+
+**Test Files:**
+- `src/__tests__/userHelpers.test.ts` - Utility function tests
+- `src/__tests__/errorHandler.test.ts` - Error handling tests
+- `src/__tests__/questions.test.ts` - API endpoint tests
+
+### 🔄 API Testing with Postman
+
+1. **Import Collection**: Import `postman-collection.json` into Postman
+2. **Set Environment**: Create environment with `base_url = http://localhost:3000`
+3. **Test Workflow**:
+   - Start with health check
+   - Create a user account
+   - Create some trivia questions
+   - Start a game session
+   - Submit answers
+   - Check progress and results
+
+## Local Development Setup
+
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm or yarn
+- Supabase project with database setup
+
+### Step-by-Step Setup
+
+1. **Clone and Install**:
+   ```bash
+   git clone <repository-url>
+   cd trivia-board-game
+   npm install
+   ```
+
+2. **Environment Configuration**:
+   Create `.env` file:
+   ```env
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   PORT=3000
+   NODE_ENV=development
+   ```
+
+3. **Database Setup**:
+   - Copy contents of `src/trivia_game.schema.sql`
+   - Run in your Supabase SQL Editor
+   - Optionally run `seed_trivia_questions.sql` for sample data
+   - Run `verify_database.sql` to confirm setup
+
+4. **Development**:
+   ```bash
+   npm start          # Start development server
+   npm run lint       # Check code quality
+   npm run format     # Format code
+   npm test           # Run unit tests
+   ```
+
+5. **Production**:
+   ```bash
+   npm run build      # Compile TypeScript
+   npm run start:prod # Run compiled version
+   ```
+
+## Database Setup Instructions
+
+### 🗄️ Supabase Database Setup
+
+The project includes SQL scripts for easy database setup:
+
+1. **`src/trivia_game.schema.sql`** - Main database schema
+2. **`database_setup.sql`** - Migration script for existing databases
+3. **`seed_trivia_questions.sql`** - Sample trivia questions
+4. **`verify_database.sql`** - Schema verification queries
+
+**Setup Steps:**
+
+1. **Create Tables**: Run `src/trivia_game.schema.sql` in Supabase SQL Editor
+2. **Verify Setup**: Run `verify_database.sql` to confirm schema
+3. **Add Sample Data**: Optionally run `seed_trivia_questions.sql`
+4. **Test Connection**: Start server and visit `/health` endpoint
+
+**Migration**: If you have existing database, use `database_setup.sql` for safe migration with constraint checks.
+
 ## User Identification Rules
 
 - **User ID**: Automatically generated UUID v4 format (e.g., `a1b2c3d4-e5f6-7890-1234-567890abcdef`)
