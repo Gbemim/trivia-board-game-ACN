@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabase } from './supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 // Types for our database tables
