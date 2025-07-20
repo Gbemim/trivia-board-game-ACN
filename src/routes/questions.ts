@@ -122,10 +122,43 @@ questionsRouter.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// Get all trivia questions
-questionsRouter.get('/', (req: Request, res: Response) => {
-  // TODO: Get all trivia questions
-  res.json({ message: 'Get all questions - not implemented yet' });
+/**
+ * Get all trivia questions (Game Master)
+ * GET /questions
+ */
+questionsRouter.get('/', async (req: Request, res: Response) => {
+  try {
+    const questions = await DatabaseService.getAllTriviaQuestions();
+
+    res.json({
+      status: 'success',
+      message: `Retrieved ${questions.length} trivia questions`,
+      data: {
+        questions,
+        total_count: questions.length
+      }
+    });
+  } catch (error) {
+    console.error('Error retrieving trivia questions:', error);
+
+    // Handle specific database errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const dbError = error as { code: string; message?: string; details?: string };
+      
+      return res.status(400).json({
+        status: 'error',
+        message: 'Database error',
+        error: dbError.message || 'Unknown database error'
+      });
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve trivia questions',
+      error: errorMessage
+    });
+  }
 });
 
 // Get a single trivia question

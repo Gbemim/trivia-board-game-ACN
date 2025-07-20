@@ -44,7 +44,7 @@
               "host": ["{{base_url}}"],
               "path": ["questions"]
             },
-            "description": "Retrieve all trivia questions"
+            "description": "Retrieve all trivia questions. Returns questions ordered by newest first with total count."
           }
         },
         {
