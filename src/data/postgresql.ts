@@ -22,7 +22,7 @@ export class PostgreSQLProvider {
           user: process.env.POSTGRES_USER || 'postgres',
           host: process.env.POSTGRES_HOST || 'localhost',
           database: process.env.POSTGRES_DB || 'trivia_game',
-          password: process.env.POSTGRES_PASSWORD || 'postgres',
+          password: process.env.POSTGRES_PASSWORD || '',
           port: parseInt(process.env.POSTGRES_PORT || '5432'),
           ...connectionConfig
         });

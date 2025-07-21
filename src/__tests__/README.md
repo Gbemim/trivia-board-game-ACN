@@ -19,19 +19,25 @@ Before running tests, set up the test database:
 
 ### Quick Setup for First-Time Users
 
-1. **Create your test configuration**:
+1. **Install dependencies**:
+   ```bash
+   npm install
+   # This automatically installs Jest and all testing dependencies from package.json
+   ```
+
+2. **Create your test configuration**:
    ```bash
    cp ../../.env.test.example ../../.env.test
    # Edit .env.test with your database username (e.g., replace 'postgres' with your actual username)
    ```
 
-2. **Run database setup**:
+3. **Run database setup**:
    ```bash
    cd src/__tests__
    ./setup-test-db.sh
    ```
 
-3. **Run tests**:
+4. **Run tests**:
    ```bash
    cd ../..  # Back to project root
    npm test
@@ -44,6 +50,23 @@ Before running tests, set up the test database:
 
 **Issue**: Database connection errors
 **Solution**: Ensure PostgreSQL is running and your user has CREATE DATABASE privileges
+
+**Issue**: "password authentication failed"
+**Solution**: Set the correct password in `POSTGRES_PASSWORD` in `.env.test`
+
+**Issue**: Tests fail on different servers/environments
+**Solutions**: 
+- Check PostgreSQL version compatibility (requires PostgreSQL 12+)
+- Verify Node.js version (requires Node.js 16+)
+- For cloud databases, use `DATABASE_URL` instead of individual config
+- Check firewall settings for PostgreSQL port (default 5432)
+- Ensure test database can be created/dropped by your user
+
+**Issue**: SSL connection errors
+**Solution**: For remote databases, use `DATABASE_URL` with SSL parameters:
+```bash
+DATABASE_URL=postgresql://username:password@host:5432/trivia_game_test?sslmode=require
+```
 
 This script will:
 - Create a test database (`trivia_game_test`)
@@ -129,6 +152,20 @@ If tests fail with database connection errors on different computers:
 
 - `jest.config.js` - Main Jest configuration
 - `jest.setup.js` - Test environment setup
+
+### Testing Dependencies (automatically installed via npm install):
+- `jest` - Testing framework
+- `@types/jest` - TypeScript types for Jest
+- `ts-jest` - TypeScript preprocessor for Jest
+- `supertest` - HTTP assertion library for testing APIs
+- `@types/supertest` - TypeScript types for Supertest
+
+### Environment Compatibility Requirements:
+- **Node.js**: Version 16 or higher
+- **PostgreSQL**: Version 12 or higher
+- **Operating System**: Linux, macOS, or Windows with WSL
+- **Memory**: At least 1GB RAM available for tests
+- **Network**: PostgreSQL port 5432 accessible (or custom port configured)
 
 ## Best Practices
 
