@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { setupRoutes } from './routes';
+import { setupRoutes } from './routes/router';
 import { errorHandler } from './utils/errorHandler';
 
 // Create Express application

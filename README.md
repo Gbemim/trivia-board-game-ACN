@@ -58,13 +58,13 @@ Health check: `http://localhost:3000/health`
 
 ```
 src/
-├── index.ts                 # Main application entry point
+├── server.ts               # Main application entry point
 ├── trivia_game.schema.sql  # Database schema
 ├── data/                   # Data access layer
 │   ├── supabase.ts         # Supabase client configuration
 │   └── database.ts         # Database service operations
 ├── routes/                 # API route definitions
-│   ├── index.ts            # Route setup and mounting
+│   ├── router.ts           # Route setup and mounting
 │   ├── questions.ts        # Question management endpoints
 │   ├── sessions.ts         # Game session endpoints
 │   ├── users.ts            # User management endpoints
@@ -406,7 +406,7 @@ The project includes SQL scripts for easy database setup:
 - **Build System**: TypeScript Compiler
 
 ### File Organization
-- **Entry Point**: `src/index.ts` - Application setup and middleware
+- **Entry Point**: `src/server.ts` - Application setup and middleware
 - **Data Layer**: `src/data/` - Database operations and Supabase client
 - **API Routes**: `src/routes/` - RESTful endpoint definitions
 - **Utilities**: `src/utils/` - Helper functions and middleware
