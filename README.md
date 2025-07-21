@@ -83,7 +83,14 @@ src/
 
 ## Testing
 
+**For complete test setup instructions, see: `src/__tests__/README.md`**
+
+Quick overview:
 ```bash
+# Setup test environment (first time only)
+cp .env.test.example .env.test
+# Edit .env.test with your database settings
+
 # Setup test database
 cd src/__tests__
 ./setup-test-db.sh
@@ -92,6 +99,8 @@ cd src/__tests__
 npm test
 npm run test:coverage
 ```
+
+**Note**: Test setup requires PostgreSQL configuration. See the detailed testing guide at `src/__tests__/README.md` for troubleshooting and environment-specific setup.
 
 ## Environment Configuration
 
