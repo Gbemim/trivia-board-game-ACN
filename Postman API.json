@@ -283,19 +283,6 @@
             },
             "description": "Get user information by user ID"
           }
-        },
-        {
-          "name": "Get User Sessions",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/users/{{user_id}}/sessions",
-              "host": ["{{base_url}}"],
-              "path": ["users", "{{user_id}}", "sessions"]
-            },
-            "description": "Get all game sessions for a specific user"
-          }
         }
       ]
     },
