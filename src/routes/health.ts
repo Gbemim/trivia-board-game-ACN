@@ -1,13 +1,17 @@
 import express, { Request, Response } from 'express';
-import { supabase } from '../data/supabase';
+import { database } from '../data/database-factory';
 
 const healthRouter = express.Router();
 
 // Health check endpoint
 healthRouter.get('/', async (req: Request, res: Response) => {
   try {
-    await supabase.from('users').select('count').limit(1);
-    res.json({ status: 'ok', message: 'Database connection successful' });
+    const isConnected = await database.testConnection();
+    if (isConnected) {
+      res.json({ status: 'ok', message: 'Database connection successful' });
+    } else {
+      res.status(500).json({ status: 'error', message: 'Database connection failed' });
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ status: 'error', message: 'Database connection failed', error: errorMessage });

@@ -1,297 +1,150 @@
-import { supabase } from './supabase';
-import { v4 as uuidv4 } from 'uuid';
+// Re-export types and database instance for backwards compatibility
+export { User, TriviaQuestion, GameSession, UserAnswer, SessionProgress } from './database-interface';
+export { database } from './database-factory';
 
-// Types for our database tables
-export interface User {
-  user_id: string;
-  username?: string | null; // Can be null in database
-}
-
-export interface TriviaQuestion {
-  id: string;
-  category: string;
-  question: string;
-  answers: string[];
-  correct_answer_index: number;
-  score: number;
-  is_ai_generated?: boolean; // Optional, defaults to false
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GameSession {
-  id: string;
-  user_id: string;
-  status: 'in_progress' | 'user_lost' | 'user_won' | 'expired';
-  current_score: number; // Total score earned from correct answers (weighted by question.score)
-  questions_answered: number; // How many questions the user has answered
-  selected_questions: string[]; // Array of question IDs for this session (16 questions) - NOT NULL
-  started_at: string; // Has DEFAULT now(), so it's always set
-  time_limit?: number | null; // Can be null in database
-  completed_at?: string | null; // Can be null in database
-}
-
-export interface UserAnswer {
-  id: string;
-  session_id: string;
-  question_id: string;
-  answer_index: number;
-  is_correct: boolean;
-  answered_at: string;
-}
-
-// Database service functions
+// Backwards compatible class that delegates to the database provider
 export class DatabaseService {
+  private static get db() {
+    // Import dynamically to avoid circular dependency
+    const { database } = require('./database-factory');
+    return database;
+  }
+
   // User operations
-  static async createUser(username?: string): Promise<User> {
-    // Generate unique user ID
-    const user_id = uuidv4();
-    
-    const { data, error } = await supabase
-      .from('users')
-      .insert([{ user_id, username }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  static async createUser(username?: string) {
+    return DatabaseService.db.createUser(username);
   }
 
-  static async getUser(userId: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+  static async getUser(userId: string) {
+    return DatabaseService.db.getUserById(userId);
   }
 
-  // Trivia Question operations
-  static async createTriviaQuestion(question: Omit<TriviaQuestion, 'id' | 'created_at' | 'updated_at'>): Promise<TriviaQuestion> {
-    const { data, error } = await supabase
-      .from('trivia_questions')
-      .insert([question])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  // Question operations
+  static async createTriviaQuestion(question: any) {
+    return DatabaseService.db.createQuestion(question);
   }
 
-  static async getAllTriviaQuestions(): Promise<TriviaQuestion[]> {
-    const { data, error } = await supabase
-      .from('trivia_questions')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+  static async getAllTriviaQuestions() {
+    return DatabaseService.db.getAllQuestions();
   }
 
-  static async getTriviaQuestionById(id: string): Promise<TriviaQuestion | null> {
-    const { data, error } = await supabase
-      .from('trivia_questions')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+  static async getTriviaQuestionById(id: string) {
+    return DatabaseService.db.getQuestionById(id);
   }
 
+  static async getRandomQuestionsForSession() {
+    const categoryCounts = { 'Sports': 4, 'Science': 4, 'Music': 4, 'Technology': 4 };
+    return DatabaseService.db.getRandomQuestionsByCategory(categoryCounts);
+  }
 
-
-  static async getRandomQuestionsForSession(): Promise<TriviaQuestion[]> {
-    // Get all available categories
-    const { data: categories, error: categoriesError } = await supabase
-      .from('trivia_questions')
-      .select('category')
-      .order('category');
-
-    if (categoriesError) throw categoriesError;
-
-    // Get unique categories
-    const uniqueCategories = Array.from(new Set((categories || []).map(q => q.category)));
-    
-    if (uniqueCategories.length < 4) {
-      throw new Error(`Insufficient categories available. Need at least 4 categories, found ${uniqueCategories.length}`);
+  static async shuffleArray<T>(array: T[]): Promise<T[]> {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-
-    // Select exactly 4 categories (use first 4 if more available)
-    const selectedCategories = uniqueCategories.slice(0, 4);
-    const selectedQuestions: TriviaQuestion[] = [];
-
-    // Get 4 random questions from each of the 4 categories
-    for (const category of selectedCategories) {
-      const { data: categoryQuestions, error } = await supabase
-        .from('trivia_questions')
-        .select('*')
-        .eq('category', category)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (!categoryQuestions || categoryQuestions.length < 4) {
-        throw new Error(`Insufficient questions in category "${category}". Need at least 4 questions, found ${categoryQuestions?.length || 0}`);
-      }
-
-      // Randomly select 4 questions from this category
-      const shuffled = categoryQuestions.sort(() => 0.5 - Math.random());
-      selectedQuestions.push(...shuffled.slice(0, 4));
-    }
-
-    // Shuffle the final 16 questions
-    return selectedQuestions.sort(() => 0.5 - Math.random());
+    return shuffled;
   }
 
+  static async updateTriviaQuestion(id: string, updates: any) {
+    return DatabaseService.db.updateQuestion(id, updates);
+  }
+
+  static async deleteTriviaQuestion(id: string) {
+    return DatabaseService.db.deleteQuestion(id);
+  }
+
+  // Session operations
+  static async createGameSession(user_id: string, time_limit?: number) {
+    return DatabaseService.db.createSession(user_id, time_limit);
+  }
+
+  static async getGameSession(session_id: string) {
+    return DatabaseService.db.getSessionById(session_id);
+  }
+
+  static async getAllGameSessions() {
+    return DatabaseService.db.getAllSessions();
+  }
+
+  static async updateGameSessionStatus(session_id: string, status: any, completed_at?: string) {
+    return DatabaseService.db.updateSessionStatus(session_id, status, completed_at);
+  }
+
+  static async updateGameSessionScore(session_id: string, current_score: number, questions_answered: number) {
+    return DatabaseService.db.updateSessionScore(session_id, current_score, questions_answered);
+  }
+
+  static async getUserSessions(user_id: string) {
+    return DatabaseService.db.getUserSessions(user_id);
+  }
+
+  // Answer operations
+  static async createUserAnswer(answerData: any) {
+    return DatabaseService.db.createAnswer(answerData);
+  }
+
+  static async getUserAnswersForSession(session_id: string) {
+    return DatabaseService.db.getUserAnswersForSession(session_id);
+  }
+
+  static async hasUserAnsweredQuestion(session_id: string, question_id: string) {
+    return DatabaseService.db.hasUserAnsweredQuestion(session_id, question_id);
+  }
+
+  // Session progress
+  static async getSessionProgress(session_id: string) {
+    return DatabaseService.db.getSessionProgress(session_id);
+  }
+
+  // Additional methods for backwards compatibility
   static async isQuestionInUse(questionId: string): Promise<boolean> {
-    // Check if question is used in any active game sessions
-    const { data, error } = await supabase
-      .from('user_answers')
-      .select('session_id, game_sessions!inner(status)')
-      .eq('question_id', questionId)
-      .in('game_sessions.status', ['in_progress']);
-
-    if (error) throw error;
-    return (data || []).length > 0;
+    // Check if question is used in any active sessions
+    const sessions = await DatabaseService.db.getAllSessions();
+    return sessions.some((session: any) => 
+      session.status === 'in_progress' && 
+      session.selected_questions.includes(questionId)
+    );
   }
 
-  static async updateTriviaQuestion(id: string, updates: Partial<TriviaQuestion>): Promise<TriviaQuestion> {
-    const { data, error } = await supabase
-      .from('trivia_questions')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  static async getGameSessionById(session_id: string) {
+    return DatabaseService.db.getSessionById(session_id);
   }
 
-  static async deleteTriviaQuestion(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('trivia_questions')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
-  // Game Session operations
-  static async createGameSession(session: Omit<GameSession, 'id' | 'started_at'>): Promise<GameSession> {
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .insert([session])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async getAllGameSessions(): Promise<GameSession[]> {
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .select('*')
-      .order('started_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  static async getUserSessions(userId: string): Promise<GameSession[]> {
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('started_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  static async updateGameSession(id: string, updates: Partial<GameSession>): Promise<GameSession> {
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async getGameSessionById(id: string): Promise<GameSession | null> {
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  }
-
-  static async getSessionQuestions(sessionId: string): Promise<TriviaQuestion[]> {
-    // Get the session with selected questions
-    const session = await this.getGameSessionById(sessionId);
-    if (!session || !session.selected_questions) {
-      return [];
+  static async getSessionQuestions(sessionId: string) {
+    const session = await DatabaseService.db.getSessionById(sessionId);
+    if (!session) return [];
+    
+    const questions = [];
+    for (const questionId of session.selected_questions) {
+      const question = await DatabaseService.db.getQuestionById(questionId);
+      if (question) questions.push(question);
     }
+    return questions;
+  }
 
-    // Get the actual question details
-    const { data, error } = await supabase
-      .from('trivia_questions')
-      .select('*')
-      .in('id', session.selected_questions);
-
-    if (error) throw error;
-    return data || [];
+  static async getUserAnswers(sessionId: string) {
+    return DatabaseService.db.getUserAnswersForSession(sessionId);
   }
 
   static async isQuestionInSession(sessionId: string, questionId: string): Promise<boolean> {
-    const session = await this.getGameSessionById(sessionId);
-    if (!session || !session.selected_questions) {
-      return false;
+    const session = await DatabaseService.db.getSessionById(sessionId);
+    return session ? session.selected_questions.includes(questionId) : false;
+  }
+
+  static async getUserAnswer(sessionId: string, questionId: string) {
+    const answers = await DatabaseService.db.getUserAnswersForSession(sessionId);
+    return answers.find((answer: any) => answer.question_id === questionId) || null;
+  }
+
+  static async updateGameSession(id: string, updates: any) {
+    // For now, only handle status updates
+    if (updates.status) {
+      await DatabaseService.db.updateSessionStatus(id, updates.status, updates.completed_at);
     }
-    return session.selected_questions.includes(questionId);
+    if (updates.current_score !== undefined && updates.questions_answered !== undefined) {
+      await DatabaseService.db.updateSessionScore(id, updates.current_score, updates.questions_answered);
+    }
+    return DatabaseService.db.getSessionById(id);
   }
-
-  // User Answer operations
-  static async createUserAnswer(answer: Omit<UserAnswer, 'id' | 'answered_at'>): Promise<UserAnswer> {
-    const { data, error } = await supabase
-      .from('user_answers')
-      .insert([answer])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async getUserAnswers(sessionId: string): Promise<UserAnswer[]> {
-    const { data, error } = await supabase
-      .from('user_answers')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('answered_at', { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  static async getUserAnswer(sessionId: string, questionId: string): Promise<UserAnswer | null> {
-    const { data, error } = await supabase
-      .from('user_answers')
-      .select('*')
-      .eq('session_id', sessionId)
-      .eq('question_id', questionId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  }
-} 
+}

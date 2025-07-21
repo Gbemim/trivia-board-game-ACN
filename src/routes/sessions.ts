@@ -60,18 +60,10 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
     }
 
     // Create new game session with selected questions
-    const session = await DatabaseService.createGameSession({
-      user_id: user_id.trim(),
-      status: 'in_progress',
-      current_score: 0,
-      questions_answered: 0,
-      selected_questions: selectedQuestions.map(q => q.id),
-      time_limit: time_limit || null,
-      completed_at: null
-    });
+    const session = await DatabaseService.createGameSession(user_id.trim(), time_limit || undefined);
 
     // Prepare response with session details and question summary
-    const categorySummary = selectedQuestions.reduce((acc, question) => {
+    const categorySummary = selectedQuestions.reduce((acc: Record<string, number>, question: any) => {
       acc[question.category] = (acc[question.category] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -87,7 +79,7 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
         questions_answered: session.questions_answered,
         total_questions: selectedQuestions.length,
         questions_by_category: categorySummary,
-        selected_questions: selectedQuestions.map(q => ({
+        selected_questions: selectedQuestions.map((q: any) => ({
           id: q.id,
           category: q.category,
           question: q.question,
@@ -143,8 +135,8 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
     const userAnswers = await DatabaseService.getUserAnswers(sessionId);
 
     // Prepare questions with answer status (but don't show correct answers for unanswered questions)
-    const questionsWithStatus = sessionQuestions.map(question => {
-      const userAnswer = userAnswers.find(answer => answer.question_id === question.id);
+    const questionsWithStatus = sessionQuestions.map((question: any) => {
+      const userAnswer = userAnswers.find((answer: any) => answer.question_id === question.id);
       
       if (userAnswer) {
         // Question has been answered - show full details including correct answer
@@ -186,7 +178,7 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
       totalPossibleScore += sessionQuestion.score;
       
       // Find if this question was answered correctly
-      const userAnswer = userAnswers.find(answer => answer.question_id === sessionQuestion.id);
+      const userAnswer = userAnswers.find((answer: any) => answer.question_id === sessionQuestion.id);
       if (userAnswer && userAnswer.is_correct) {
         currentScore += sessionQuestion.score;
       }
@@ -367,7 +359,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
       totalPossibleScore += sessionQuestion.score;
       
       // Find if this question was answered correctly
-      const userAnswer = currentAnswers.find(answer => answer.question_id === sessionQuestion.id);
+      const userAnswer = currentAnswers.find((answer: any) => answer.question_id === sessionQuestion.id);
       if (userAnswer && userAnswer.is_correct) {
         currentScore += sessionQuestion.score;
       }
@@ -484,11 +476,11 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
 
     // Apply filters if provided
     if (status && typeof status === 'string') {
-      sessions = sessions.filter(session => session.status === status);
+      sessions = sessions.filter((session: any) => session.status === status);
     }
 
     if (user_id && typeof user_id === 'string') {
-      sessions = sessions.filter(session => session.user_id === user_id);
+      sessions = sessions.filter((session: any) => session.user_id === user_id);
     }
 
     // Apply limit if provided
@@ -501,7 +493,7 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
 
     // Get user information for each session
     const sessionsWithUserInfo = await Promise.all(
-      sessions.map(async (session) => {
+      sessions.map(async (session: any) => {
         try {
           const user = await DatabaseService.getUser(session.user_id);
           
@@ -556,10 +548,10 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
     // Calculate summary statistics (from all sessions, not just filtered ones)
     const allSessions = await DatabaseService.getAllGameSessions();
     const totalSessions = allSessions.length;
-    const completedSessions = allSessions.filter(s => s.status === 'user_won' || s.status === 'user_lost').length;
-    const activeSessions = allSessions.filter(s => s.status === 'in_progress').length;
-    const wonSessions = allSessions.filter(s => s.status === 'user_won').length;
-    const lostSessions = allSessions.filter(s => s.status === 'user_lost').length;
+    const completedSessions = allSessions.filter((s: any) => s.status === 'user_won' || s.status === 'user_lost').length;
+    const activeSessions = allSessions.filter((s: any) => s.status === 'in_progress').length;
+    const wonSessions = allSessions.filter((s: any) => s.status === 'user_won').length;
+    const lostSessions = allSessions.filter((s: any) => s.status === 'user_lost').length;
 
     res.json({
       status: 'success',

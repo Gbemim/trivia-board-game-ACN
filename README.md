@@ -12,7 +12,9 @@ This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, E
 ### Prerequisites
 - Node.js (v18+ recommended)
 - npm or yarn
-- Supabase project (with tables set up as per `src/trivia_game.schema.sql`)
+- **Choose one database option:**
+  - **Supabase**: Hosted PostgreSQL (recommended for quick start)
+  - **PostgreSQL**: Local PostgreSQL installation
 
 ### Setup
 1. Clone the repository
@@ -20,22 +22,36 @@ This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, E
    ```bash
    npm install
    ```
-3. Create a `.env` file in the project root with your Supabase credentials:
+3. **Choose your database setup** (see Database Setup Instructions below)
+4. Create a `.env` file in the project root (copy from `.env.example` and update):
+   
+   **For Supabase:**
    ```env
+   DATABASE_TYPE=supabase
    SUPABASE_URL=your-supabase-url
    SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    PORT=3000
    NODE_ENV=development
    ```
+   
+   **For PostgreSQL:**
+   ```env
+   DATABASE_TYPE=postgresql
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=trivia_game
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_password
+   PORT=3000
+   NODE_ENV=development
+   ```
 
-### 🏃‍♂️ Running the Application
+### Running the Application
 
 #### Development Mode (TypeScript)
 ```bash
 npm start        # Quick start for development
-# or
-npm run dev      # Same as npm start
 ```
 
 #### Production Mode (Compiled JavaScript)
@@ -54,32 +70,43 @@ npm run clean    # Remove compiled files
 The API will be available at `http://localhost:3000/`
 Health check: `http://localhost:3000/health`
 
-## 📁 Project Structure
+## Project Structure
 
 ```
+database/                   # Database setup files
+├── schemas/                # Database schema files
+│   ├── supabase.sql        # Supabase-compatible schema
+│   └── postgresql_schema.sql # PostgreSQL schema with indexes
+├── seeds/                  # Seed data files
+│   └── seed_trivia_questions.sql # Sample trivia questions
+└── README.md              # Database setup guide
 src/
-├── server.ts               # Main application entry point
-├── trivia_game.schema.sql  # Database schema
+├── index.ts                # Main application entry point
 ├── data/                   # Data access layer
 │   ├── supabase.ts         # Supabase client configuration
 │   └── database.ts         # Database service operations
 ├── routes/                 # API route definitions
-│   ├── router.ts           # Route setup and mounting
+│   ├── index.ts            # Route setup and mounting
 │   ├── questions.ts        # Question management endpoints
 │   ├── sessions.ts         # Game session endpoints
 │   ├── users.ts            # User management endpoints
 │   └── health.ts           # Health check endpoint
-└── utils/                  # Utility functions
-    ├── userHelpers.ts      # User validation and helpers
-    └── errorHandler.ts     # Error handling middleware
+├── utils/                  # Utility functions
+│   ├── userHelpers.ts      # User validation and helpers
+│   └── errorHandler.ts     # Error handling middleware
+└── __tests__/              # Test suite
+    ├── users.test.ts       # User API + validation tests
+    ├── sessions.test.ts    # Session management tests
+    └── questions.test.ts   # Question CRUD tests
 ```
 
-### 🏗️ Architecture Highlights
+### Architecture Highlights
 - **Pure TypeScript**: Clean TypeScript source code, compiled JavaScript output
 - **Modular Routes**: Organized by functionality (users, sessions, questions, health)
 - **Data Layer**: Centralized database operations and Supabase configuration
 - **Utilities**: Reusable helper functions and middleware
 - **Clean Separation**: Business logic separated from route definitions
+- **Comprehensive Testing**: 34 tests covering all endpoints with real validation logic
 
 ## API Usage
 
@@ -222,13 +249,13 @@ Content-Type: application/json
 
 ## Complete API Endpoints Reference
 
-### 🔗 Postman Collection
+### Postman Collection
 A complete Postman collection is available in `postman-collection.json` with all endpoints pre-configured. Import this file into Postman for easy testing.
 
 **Environment Variables:**
 - `base_url`: `http://localhost:3000` (or your server URL)
 
-### 👥 User Management Endpoints
+### User Management Endpoints
 
 | Method | Endpoint | Description | Required Fields |
 |--------|----------|-------------|-----------------|
@@ -236,7 +263,7 @@ A complete Postman collection is available in `postman-collection.json` with all
 | `GET` | `/users/:id` | Get user information by ID | - |
 | `GET` | `/users/:id/sessions` | Get all sessions for a user | - |
 
-### ❓ Question Management Endpoints (Game Master)
+### Question Management Endpoints (Game Master)
 
 | Method | Endpoint | Description | Required Fields |
 |--------|----------|-------------|-----------------|
@@ -246,7 +273,7 @@ A complete Postman collection is available in `postman-collection.json` with all
 | `PUT` | `/questions/:id` | Update existing question | Any field to update |
 | `DELETE` | `/questions/:id` | Delete a question | - |
 
-### 🎮 Game Session Endpoints (Users)
+### Game Session Endpoints (Users)
 
 | Method | Endpoint | Description | Required Fields |
 |--------|----------|-------------|-----------------|
@@ -255,7 +282,7 @@ A complete Postman collection is available in `postman-collection.json` with all
 | `POST` | `/sessions/:id/answer` | Submit answer for a question | `question_id`, `answer_index` |
 | `GET` | `/sessions` | Get all sessions (Game Master) | - |
 
-### 🔧 System Endpoints
+### System Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -264,7 +291,7 @@ A complete Postman collection is available in `postman-collection.json` with all
 
 ## Testing
 
-### 🧪 Unit Tests
+### Unit Tests
 
 The project includes comprehensive unit tests using Jest and Supertest:
 
@@ -272,7 +299,7 @@ The project includes comprehensive unit tests using Jest and Supertest:
 # Run all tests
 npm test
 
-# Run tests in watch mode (for development)
+# Run tests in watch mode (for development)  
 npm run test:watch
 
 # Run tests with coverage report
@@ -280,16 +307,28 @@ npm run test:coverage
 ```
 
 **Test Coverage:**
-- ✅ **User Helpers**: UUID validation, username validation
-- ✅ **Error Handlers**: Database error handling, user-specific errors
-- ✅ **Question API**: CRUD operations, validation, error responses
+- ✅ **Users API**: Complete endpoint testing with real validation logic
+- ✅ **Sessions API**: Game session creation, progress tracking, answer submission
+- ✅ **Questions API**: Full CRUD operations, validation, error responses
+- ✅ **Validation Logic**: UUID and username validation integrated into endpoint tests
+- ✅ **Error Handling**: Database errors, input validation, edge cases
+- ✅ **Security**: Malformed JSON, extra fields, boundary testing
 
-**Test Files:**
-- `src/__tests__/userHelpers.test.ts` - Utility function tests
-- `src/__tests__/errorHandler.test.ts` - Error handling tests
-- `src/__tests__/questions.test.ts` - API endpoint tests
+**Test Structure (34 Tests Total):**
+```
+src/__tests__/
+├── users.test.ts         (13 tests) - User endpoints + validation logic
+├── sessions.test.ts      (11 tests) - Session management & gameplay  
+└── questions.test.ts     (10 tests) - Question CRUD operations
+```
 
-### 🔄 API Testing with Postman
+**Key Testing Features:**
+- **Real Validation**: Tests actual `isValidUserId` and `isValidUsername` functions through API calls
+- **No Test Duplication**: Each test serves a unique purpose, no redundant coverage
+- **Comprehensive Scenarios**: Success cases, validation errors, database failures, edge cases
+- **Integration Testing**: Tests validate both individual functions AND their usage in real endpoints
+
+### API Testing with Postman
 
 1. **Import Collection**: Import `postman-collection.json` into Postman
 2. **Set Environment**: Create environment with `base_url = http://localhost:3000`
@@ -328,10 +367,10 @@ npm run test:coverage
    ```
 
 3. **Database Setup**:
-   - Copy contents of `src/trivia_game.schema.sql`
-   - Run in your Supabase SQL Editor
-   - Optionally run `seed_trivia_questions.sql` for sample data
-   - Run `verify_database.sql` to confirm setup
+   - **For Supabase**: Copy contents of `database/schemas/supabase.sql` and run in Supabase SQL Editor
+   - **For PostgreSQL**: Run `psql trivia_game < database/schemas/postgresql_schema.sql`
+   - **Optional**: Run `database/seeds/seed_trivia_questions.sql` for 32 sample questions from the challenge
+   - **Verify**: Run `verify_database.sql` to confirm setup
 
 4. **Development**:
    ```bash
@@ -349,23 +388,77 @@ npm run test:coverage
 
 ## Database Setup Instructions
 
-### 🗄️ Supabase Database Setup
+### Database Options
 
-The project includes SQL scripts for easy database setup:
+The project now supports multiple database backends. Choose the one that best fits your needs:
 
-1. **`src/trivia_game.schema.sql`** - Main database schema
-2. **`database_setup.sql`** - Migration script for existing databases
-3. **`seed_trivia_questions.sql`** - Sample trivia questions
-4. **`verify_database.sql`** - Schema verification queries
+#### Option 1: Supabase (Cloud PostgreSQL)
+**Best for:** Quick setup, hosted solution, automatic backups
 
-**Setup Steps:**
+1. **Create Tables**: Run `database/schemas/supabase.sql` in Supabase SQL Editor
+2. **Environment Setup**: 
+   ```env
+   DATABASE_TYPE=supabase
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ```
+3. **Verify Setup**: Run `verify_database.sql` to confirm schema
+4. **Add Sample Data**: Optionally run `database/seeds/seed_trivia_questions.sql`
 
-1. **Create Tables**: Run `src/trivia_game.schema.sql` in Supabase SQL Editor
-2. **Verify Setup**: Run `verify_database.sql` to confirm schema
-3. **Add Sample Data**: Optionally run `seed_trivia_questions.sql`
-4. **Test Connection**: Start server and visit `/health` endpoint
+#### Option 2: PostgreSQL (Local/Self-hosted)
+**Best for:** Full control, local development, no external dependencies
 
-**Migration**: If you have existing database, use `database_setup.sql` for safe migration with constraint checks.
+1. **Install PostgreSQL**:
+   ```bash
+   # macOS
+   brew install postgresql
+   brew services start postgresql
+   
+   # Ubuntu/Debian
+   sudo apt-get install postgresql postgresql-contrib
+   sudo systemctl start postgresql
+   ```
+
+2. **Create Database**:
+   ```bash
+   createdb trivia_game
+   psql trivia_game < database/schemas/postgresql_schema.sql
+   ```
+
+3. **Environment Setup**:
+   ```env
+   DATABASE_TYPE=postgresql
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=trivia_game
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_password
+   
+   # Alternative: Use connection string
+   # DATABASE_URL=postgresql://postgres:password@localhost:5432/trivia_game
+   ```
+
+4. **Add Sample Data**:
+   ```bash
+   psql trivia_game < database/seeds/seed_trivia_questions.sql
+   ```
+
+### Database Schema Files
+
+- **`database/schemas/supabase.sql`** - Supabase-compatible schema
+- **`database/schemas/postgresql_schema.sql`** - PostgreSQL-specific schema with indexes and triggers
+- **`database/seeds/seed_trivia_questions.sql`** - Sample trivia questions (32 questions from challenge)
+- **`verify_database.sql`** - Schema verification queries
+- **`.env.example`** - Environment template for both database types
+
+### Switching Between Databases
+
+Simply change the `DATABASE_TYPE` environment variable:
+- `DATABASE_TYPE=supabase` - Use Supabase
+- `DATABASE_TYPE=postgresql` - Use PostgreSQL
+
+No code changes required! The application automatically uses the correct database provider.
 
 ## User Identification Rules
 
@@ -385,7 +478,7 @@ The project includes SQL scripts for easy database setup:
 - **Session Status**: Automatically updated to 'user_won' or 'user_lost' when all questions are answered
 - **Progress Tracking**: Real-time score percentage and questions remaining available via progress endpoint
 
-## 📋 Notes
+## Notes
 - **No Authentication**: Open access system - anyone can use any endpoint
 - **TypeScript First**: Pure TypeScript development with compiled JavaScript for production
 - **User Registration Required**: Users must create an account before starting game sessions
@@ -393,9 +486,11 @@ The project includes SQL scripts for easy database setup:
 - **Optional Usernames**: Username field is optional but recommended for user experience
 - **Concurrent Sessions**: Each user can have multiple active game sessions
 - **Input Validation**: All inputs are validated for proper format and types
-- **Database Schema**: See `src/trivia_game.schema.sql` for complete database structure
+- **Database Schema**: See `database/schemas/` for complete database structure
+- **Comprehensive Testing**: 34 tests covering all endpoints with real validation logic
+- **Clean Test Structure**: No duplicate tests, each test serves a unique purpose
 
-## 🛠️ Development
+## Development
 
 ### Tech Stack
 - **Runtime**: Node.js with TypeScript
@@ -406,18 +501,20 @@ The project includes SQL scripts for easy database setup:
 - **Build System**: TypeScript Compiler
 
 ### File Organization
-- **Entry Point**: `src/server.ts` - Application setup and middleware
+- **Entry Point**: `src/index.ts` - Application setup and middleware
 - **Data Layer**: `src/data/` - Database operations and Supabase client
 - **API Routes**: `src/routes/` - RESTful endpoint definitions
 - **Utilities**: `src/utils/` - Helper functions and middleware
-- **Schema**: `src/trivia_game.schema.sql` - Database structure
+- **Schema**: `database/schemas/` - Database structure
+- **Tests**: `src/__tests__/` - Comprehensive test suite (34 tests, 3 files)
 
 ### Development Workflow
 1. **Write Code**: Edit TypeScript files in `src/`
 2. **Run Dev Server**: `npm start` (uses ts-node for direct TS execution)
-3. **Lint & Format**: `npm run lint` and `npm run format`
-4. **Build for Production**: `npm run build` (compiles to `dist/`)
-5. **Run Production**: `npm run start:prod`
+3. **Test Changes**: `npm test` (runs comprehensive test suite - 34 tests)
+4. **Lint & Format**: `npm run lint` and `npm run format`
+5. **Build for Production**: `npm run build` (compiles to `dist/`)
+6. **Run Production**: `npm run start:prod`
 
 ### Code Quality
 - **Linting**: ESLint with TypeScript rules
@@ -425,6 +522,8 @@ The project includes SQL scripts for easy database setup:
 - **Type Safety**: Full TypeScript coverage with strict typing
 - **Error Handling**: Centralized error handling middleware
 - **Validation**: Input validation for all endpoints
+- **Testing**: Comprehensive test suite with real validation logic (no mocks for validation functions)
+- **Clean Architecture**: Modular design with clear separation of concerns
 
-## 📄 License
+## License
 MIT 
