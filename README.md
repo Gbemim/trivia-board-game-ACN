@@ -31,10 +31,10 @@ A simple REST API for a trivia board game built with Node.js, TypeScript, Expres
    ```bash
    # Create database and run schema
    createdb trivia_game
-   psql trivia_game < database/postgresql_schema.sql
+   psql trivia_game < src/data/database/postgresql_schema.sql
    
    # Optional: Add sample questions
-   psql trivia_game < database/seed_trivia_questions.sql
+   psql trivia_game < src/data/database/seed_trivia_questions.sql
    ```
 
 4. Run the application:
@@ -49,12 +49,13 @@ API available at: `http://localhost:3000`
 
 ```
 src/
-├── data/                   # Database operations
+├── data/                   # Database operations & setup files
+│   ├── database/           # Database schema & seed files
+│   ├── postgresql.ts       # PostgreSQL provider
+│   └── types.ts           # Type definitions
 ├── routes/                 # API endpoints
 ├── utils/                  # Helper functions
 └── __tests__/              # Integration tests
-
-database/                   # Database setup files
 ```
 
 ## API Usage
@@ -109,5 +110,5 @@ See `.env.example` for configuration options. Key variables:
 ---
 
 For detailed information, see:
-- `database/README.md` - Database setup guide
+- `src/data/database/` - Database schema and seed files
 - `src/__tests__/README.md` - Testing guide 

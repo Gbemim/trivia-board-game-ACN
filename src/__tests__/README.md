@@ -17,14 +17,37 @@ src/__tests__/
 
 Before running tests, set up the test database:
 
-```bash
-cd src/__tests__
-./setup-test-db.sh
-```
+### Quick Setup for First-Time Users
+
+1. **Create your test configuration**:
+   ```bash
+   cp ../../.env.test.example ../../.env.test
+   # Edit .env.test with your database username (e.g., replace 'postgres' with your actual username)
+   ```
+
+2. **Run database setup**:
+   ```bash
+   cd src/__tests__
+   ./setup-test-db.sh
+   ```
+
+3. **Run tests**:
+   ```bash
+   cd ../..  # Back to project root
+   npm test
+   ```
+
+### Common Issues and Solutions
+
+**Issue**: Tests fail with "role 'postgres' does not exist"
+**Solution**: Your PostgreSQL username is different. Check with `psql -l` and update `POSTGRES_USER` in `.env.test`
+
+**Issue**: Database connection errors
+**Solution**: Ensure PostgreSQL is running and your user has CREATE DATABASE privileges
 
 This script will:
 - Create a test database (`trivia_game_test`)
-- Run the database schema
+- Run the database schema from `src/data/database/`
 - Seed test data
 
 ## Running Tests
@@ -41,11 +64,59 @@ npm run test:coverage
 
 ## Test Database Configuration
 
-The tests use environment variables to connect to the test database:
-- `POSTGRES_DB=trivia_game_test`
-- `POSTGRES_USER=your_username` 
+The tests use environment variables to connect to the test database. You can configure these in several ways:
+
+### Method 1: Environment Variables
+Set these before running tests:
+```bash
+export POSTGRES_USER=your_username
+export POSTGRES_PASSWORD=your_password
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_DB_TEST=trivia_game_test
+```
+
+### Method 2: .env.test file (Recommended)
+```bash
+# Copy the example and edit it
+cp ../../.env.test.example ../../.env.test
+# Edit .env.test with your settings
+```
+
+### Method 3: Default Configuration
+If no configuration is provided, tests will use:
+- `POSTGRES_USER=postgres`
+- `POSTGRES_PASSWORD=` (empty)
 - `POSTGRES_HOST=localhost`
 - `POSTGRES_PORT=5432`
+- `POSTGRES_DB_TEST=trivia_game_test`
+
+### Troubleshooting Database Connection Issues
+
+If tests fail with database connection errors on different computers:
+
+1. **Check PostgreSQL is running**:
+   ```bash
+   pg_isready -h localhost -p 5432
+   ```
+
+2. **Verify user permissions**:
+   ```bash
+   psql -h localhost -U your_username -d postgres -c "SELECT 1;"
+   ```
+
+3. **Ensure user can create databases**:
+   ```bash
+   psql -h localhost -U your_username -d postgres -c "CREATE DATABASE test_permissions_check;"
+   psql -h localhost -U your_username -d postgres -c "DROP DATABASE test_permissions_check;"
+   ```
+
+4. **Use .env.test for custom settings**:
+   ```bash
+   # Create .env.test with your specific database settings
+   cp ../../.env.test.example ../../.env.test
+   # Edit the file with your actual database credentials
+   ```
 
 ## Integration Tests
 
