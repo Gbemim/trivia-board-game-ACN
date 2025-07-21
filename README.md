@@ -83,7 +83,7 @@ src/
 
 ## Testing
 
-**For complete test setup instructions, see: `src/__tests__/README.md`**
+**For complete test setup instructions, see: [src/__tests__/README.md](src/__tests__/README.md)**
 
 Quick overview:
 ```bash
@@ -100,7 +100,7 @@ npm test
 npm run test:coverage
 ```
 
-**Note**: Test setup requires PostgreSQL configuration. See the detailed testing guide at `src/__tests__/README.md` for troubleshooting and environment-specific setup.
+**Note**: Test setup requires PostgreSQL configuration. See the detailed testing guide at [src/__tests__/README.md](src/__tests__/README.md) for troubleshooting and environment-specific setup.
 
 ## Environment Configuration
 
@@ -120,4 +120,4 @@ See `.env.example` for configuration options. Key variables:
 
 For detailed information, see:
 - `src/data/database/` - Database schema and seed files
-- `src/__tests__/README.md` - Testing guide 
+- [src/__tests__/README.md](src/__tests__/README.md) - Testing guide 
