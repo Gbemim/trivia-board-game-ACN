@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
-import { database } from '../data/database-factory';
+import PostgreSQLProvider from '../data/postgresql';
 
 const healthRouter = express.Router();
+const database = new PostgreSQLProvider();
 
 // Health check endpoint
 healthRouter.get('/', async (req: Request, res: Response) => {

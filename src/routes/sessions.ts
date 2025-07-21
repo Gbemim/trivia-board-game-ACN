@@ -1,9 +1,10 @@
 import express, { Request, Response } from 'express';
-import { DatabaseService } from '../data/database';
+import PostgreSQLProvider from '../data/postgresql';
 import { handleDatabaseError } from '../utils/errorHandler';
 import { isValidUserId } from '../utils/userHelpers';
 
 const sessionsRouter = express.Router();
+const database = new PostgreSQLProvider();
 
 // Create a new game session - requires user_id
 sessionsRouter.post('/', async (req: Request, res: Response) => {
@@ -29,7 +30,7 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
     }
 
     // Verify user exists
-    const user = await DatabaseService.getUser(user_id);
+    const user = await database.getUser(user_id);
     if (!user) {
       return res.status(404).json({
         status: 'error',
@@ -50,7 +51,7 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
     // Select 16 questions across 4 categories for this session
     let selectedQuestions;
     try {
-      selectedQuestions = await DatabaseService.getRandomQuestionsForSession();
+      selectedQuestions = await database.getRandomQuestionsForSession();
     } catch (questionError) {
       return res.status(400).json({
         status: 'error',
@@ -60,7 +61,7 @@ sessionsRouter.post('/', async (req: Request, res: Response) => {
     }
 
     // Create new game session with selected questions
-    const session = await DatabaseService.createGameSession(user_id.trim(), time_limit || undefined);
+    const session = await database.createGameSession(user_id.trim(), time_limit || undefined);
 
     // Prepare response with session details and question summary
     const categorySummary = selectedQuestions.reduce((acc: Record<string, number>, question: any) => {
@@ -119,7 +120,7 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
     }
 
     // Get session details
-    const session = await DatabaseService.getGameSessionById(sessionId);
+    const session = await database.getGameSessionById(sessionId);
     if (!session) {
       return res.status(404).json({
         status: 'error',
@@ -129,10 +130,10 @@ sessionsRouter.get('/:id', async (req: Request, res: Response) => {
     }
 
     // Get session questions
-    const sessionQuestions = await DatabaseService.getSessionQuestions(sessionId);
+    const sessionQuestions = await database.getSessionQuestions(sessionId);
     
     // Get user answers for progress tracking
-    const userAnswers = await DatabaseService.getUserAnswers(sessionId);
+    const userAnswers = await database.getUserAnswers(sessionId);
 
     // Prepare questions with answer status (but don't show correct answers for unanswered questions)
     const questionsWithStatus = sessionQuestions.map((question: any) => {
@@ -268,7 +269,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     }
 
     // Check if session exists and is active
-    const session = await DatabaseService.getGameSessionById(sessionId);
+    const session = await database.getGameSessionById(sessionId);
     if (!session) {
       return res.status(404).json({
         status: 'error',
@@ -295,7 +296,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     }
 
     // Check if question exists
-    const question = await DatabaseService.getTriviaQuestionById(question_id);
+    const question = await database.getQuestionById(question_id);
     if (!question) {
       return res.status(404).json({
         status: 'error',
@@ -305,7 +306,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     }
 
     // Validate that this question belongs to this session
-    const isQuestionInSession = await DatabaseService.isQuestionInSession(sessionId, question_id);
+    const isQuestionInSession = await database.isQuestionInSession(sessionId, question_id);
     if (!isQuestionInSession) {
       return res.status(400).json({
         status: 'error',
@@ -324,7 +325,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     }
 
     // Check for duplicate submission (enforce one attempt per question per session)
-    const existingAnswer = await DatabaseService.getUserAnswer(sessionId, question_id);
+    const existingAnswer = await database.getUserAnswer(sessionId, question_id);
     if (existingAnswer) {
       return res.status(409).json({
         status: 'error',
@@ -337,7 +338,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     const isCorrect = answer_index === question.correct_answer_index;
 
     // Create the user answer record
-    await DatabaseService.createUserAnswer({
+    await database.createUserAnswer({
       session_id: sessionId,
       question_id: question_id,
       answer_index: answer_index,
@@ -345,7 +346,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     });
 
     // Get current session progress with proper score calculation
-    const currentAnswers = await DatabaseService.getUserAnswers(sessionId);
+    const currentAnswers = await database.getUserAnswers(sessionId);
     const questionsAnswered = currentAnswers.length;
     
     // Calculate actual score based on question weights
@@ -353,7 +354,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     let totalPossibleScore = 0;
     
     // Get all session questions to calculate total possible score and actual score
-    const sessionQuestions = await DatabaseService.getSessionQuestions(sessionId);
+    const sessionQuestions = await database.getSessionQuestions(sessionId);
     
     for (const sessionQuestion of sessionQuestions) {
       totalPossibleScore += sessionQuestion.score;
@@ -382,7 +383,7 @@ sessionsRouter.post('/:id/answer', async (req: Request, res: Response) => {
     }
 
     // Update session with new score and status
-    const updatedSession = await DatabaseService.updateGameSession(sessionId, {
+    const updatedSession = await database.updateGameSession(sessionId, {
       current_score: currentScore,
       questions_answered: questionsAnswered,
       status: newStatus,
@@ -472,7 +473,7 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
     const { status, user_id, limit } = req.query;
 
     // Get all game sessions
-    let sessions = await DatabaseService.getAllGameSessions();
+    let sessions = await database.getAllGameSessions();
 
     // Apply filters if provided
     if (status && typeof status === 'string') {
@@ -495,7 +496,7 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
     const sessionsWithUserInfo = await Promise.all(
       sessions.map(async (session: any) => {
         try {
-          const user = await DatabaseService.getUser(session.user_id);
+          const user = await database.getUser(session.user_id);
           
           return {
             session_id: session.id,
@@ -546,7 +547,7 @@ sessionsRouter.get('/', async (req: Request, res: Response) => {
     );
 
     // Calculate summary statistics (from all sessions, not just filtered ones)
-    const allSessions = await DatabaseService.getAllGameSessions();
+    const allSessions = await database.getAllGameSessions();
     const totalSessions = allSessions.length;
     const completedSessions = allSessions.filter((s: any) => s.status === 'user_won' || s.status === 'user_lost').length;
     const activeSessions = allSessions.filter((s: any) => s.status === 'in_progress').length;

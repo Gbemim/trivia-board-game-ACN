@@ -1,9 +1,10 @@
 import express, { Request, Response } from 'express';
-import { DatabaseService } from '../data/database';
+import PostgreSQLProvider from '../data/postgresql';
 import { handleDatabaseError, handleUserError } from '../utils/errorHandler';
 import { isValidUserId, isValidUsername } from '../utils/userHelpers';
 
 const usersRouter = express.Router();
+const database = new PostgreSQLProvider();
 
 /**
  * Create a new user with optional username
@@ -32,7 +33,7 @@ usersRouter.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    const user = await DatabaseService.createUser(username ? username.trim() : undefined);
+    const user = await database.createUser(username ? username.trim() : undefined);
     
     res.status(201).json({
       status: 'success',
@@ -71,7 +72,7 @@ usersRouter.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    const user = await DatabaseService.getUser(id);
+    const user = await database.getUser(id);
     
     if (!user) {
       return res.status(404).json({

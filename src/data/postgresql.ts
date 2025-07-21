@@ -1,29 +1,37 @@
 import { Pool, PoolClient } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import { DatabaseProvider, User, TriviaQuestion, GameSession, UserAnswer, SessionProgress } from './database-interface';
+import { User, TriviaQuestion, GameSession, UserAnswer } from './types';
 
-export class PostgreSQLProvider implements DatabaseProvider {
+export class PostgreSQLProvider {
+  private static sharedPool: Pool | null = null;
   private pool: Pool;
 
   constructor(connectionConfig?: any) {
-    // Use connection string if provided, otherwise use individual config options
-    if (process.env.DATABASE_URL) {
-      this.pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-      });
+    // Use shared pool to prevent multiple connection pools
+    if (PostgreSQLProvider.sharedPool) {
+      this.pool = PostgreSQLProvider.sharedPool;
     } else {
-      this.pool = new Pool({
-        user: process.env.POSTGRES_USER || 'postgres',
-        host: process.env.POSTGRES_HOST || 'localhost',
-        database: process.env.POSTGRES_DB || 'trivia_game',
-        password: process.env.POSTGRES_PASSWORD || 'postgres',
-        port: parseInt(process.env.POSTGRES_PORT || '5432'),
-        ...connectionConfig
-      });
+      // Use connection string if provided, otherwise use individual config options
+      if (process.env.DATABASE_URL) {
+        this.pool = new Pool({
+          connectionString: process.env.DATABASE_URL,
+          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        });
+      } else {
+        this.pool = new Pool({
+          user: process.env.POSTGRES_USER || 'postgres',
+          host: process.env.POSTGRES_HOST || 'localhost',
+          database: process.env.POSTGRES_DB || 'trivia_game',
+          password: process.env.POSTGRES_PASSWORD || 'postgres',
+          port: parseInt(process.env.POSTGRES_PORT || '5432'),
+          ...connectionConfig
+        });
+      }
+      PostgreSQLProvider.sharedPool = this.pool;
     }
   }
 
+  // Utility
   async testConnection(): Promise<boolean> {
     try {
       const client = await this.pool.connect();
@@ -46,10 +54,6 @@ export class PostgreSQLProvider implements DatabaseProvider {
       const values = [user_id, username || null];
       const result = await client.query(query, values);
       
-      if (!result.rows[0]) {
-        throw new Error('Failed to create user');
-      }
-      
       return {
         user_id: result.rows[0].user_id,
         username: result.rows[0].username
@@ -61,7 +65,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async getUserById(user_id: string): Promise<User | null> {
+  async getUser(user_id: string): Promise<User | null> {
     const client = await this.pool.connect();
     
     try {
@@ -78,37 +82,6 @@ export class PostgreSQLProvider implements DatabaseProvider {
       };
     } catch (error) {
       throw new Error(`Failed to get user: ${error}`);
-    } finally {
-      client.release();
-    }
-  }
-
-  async getUserSessions(user_id: string): Promise<GameSession[]> {
-    const client = await this.pool.connect();
-    
-    try {
-      const query = `
-        SELECT id, user_id, status, current_score, questions_answered, 
-               selected_questions, started_at, time_limit, completed_at
-        FROM game_sessions 
-        WHERE user_id = $1 
-        ORDER BY started_at DESC
-      `;
-      const result = await client.query(query, [user_id]);
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        user_id: row.user_id,
-        status: row.status,
-        current_score: row.current_score,
-        questions_answered: row.questions_answered,
-        selected_questions: row.selected_questions,
-        started_at: row.started_at,
-        time_limit: row.time_limit,
-        completed_at: row.completed_at
-      }));
-    } catch (error) {
-      throw new Error(`Failed to get user sessions: ${error}`);
     } finally {
       client.release();
     }
@@ -137,17 +110,13 @@ export class PostgreSQLProvider implements DatabaseProvider {
       ];
       
       const result = await client.query(query, values);
-      
-      if (!result.rows[0]) {
-        throw new Error('Failed to create question');
-      }
-      
       const row = result.rows[0];
+      
       return {
         id: row.id,
         category: row.category,
         question: row.question,
-        answers: row.answers, // PostgreSQL automatically parses jsonb columns
+        answers: row.answers,
         correct_answer_index: row.correct_answer_index,
         score: row.score,
         is_ai_generated: row.is_ai_generated,
@@ -177,7 +146,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
         id: row.id,
         category: row.category,
         question: row.question,
-        answers: row.answers, // PostgreSQL automatically parses jsonb columns
+        answers: row.answers,
         correct_answer_index: row.correct_answer_index,
         score: row.score,
         is_ai_generated: row.is_ai_generated,
@@ -212,7 +181,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
         id: row.id,
         category: row.category,
         question: row.question,
-        answers: row.answers, // PostgreSQL automatically parses jsonb columns
+        answers: row.answers,
         correct_answer_index: row.correct_answer_index,
         score: row.score,
         is_ai_generated: row.is_ai_generated,
@@ -230,7 +199,6 @@ export class PostgreSQLProvider implements DatabaseProvider {
     const client = await this.pool.connect();
     
     try {
-      // Build dynamic update query
       const updates: string[] = [];
       const values: any[] = [];
       let paramCount = 1;
@@ -271,17 +239,13 @@ export class PostgreSQLProvider implements DatabaseProvider {
       `;
       
       const result = await client.query(query, values);
-      
-      if (!result.rows[0]) {
-        throw new Error('Question not found');
-      }
-      
       const row = result.rows[0];
+      
       return {
         id: row.id,
         category: row.category,
         question: row.question,
-        answers: row.answers, // PostgreSQL automatically parses jsonb columns
+        answers: row.answers,
         correct_answer_index: row.correct_answer_index,
         score: row.score,
         is_ai_generated: row.is_ai_generated,
@@ -295,14 +259,12 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async deleteQuestion(id: string): Promise<boolean> {
+  async deleteQuestion(id: string): Promise<void> {
     const client = await this.pool.connect();
     
     try {
       const query = 'DELETE FROM trivia_questions WHERE id = $1';
-      const result = await client.query(query, [id]);
-      
-      return result.rowCount! > 0;
+      await client.query(query, [id]);
     } catch (error) {
       throw new Error(`Failed to delete question: ${error}`);
     } finally {
@@ -310,39 +272,46 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async getRandomQuestionsByCategory(categoryCounts: Record<string, number>): Promise<TriviaQuestion[]> {
+  async isQuestionInUse(questionId: string): Promise<boolean> {
     const client = await this.pool.connect();
     
     try {
-      const questions: TriviaQuestion[] = [];
+      const query = `
+        SELECT 1 FROM game_sessions 
+        WHERE status = 'in_progress' 
+        AND selected_questions @> $1
+        LIMIT 1
+      `;
+      const result = await client.query(query, [JSON.stringify([questionId])]);
       
-      for (const [category, count] of Object.entries(categoryCounts)) {
+      return result.rows.length > 0;
+    } catch (error) {
+      throw new Error(`Failed to check if question is in use: ${error}`);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getRandomQuestionsForSession(): Promise<string[]> {
+    const client = await this.pool.connect();
+    
+    try {
+      // Get 4 questions from each category
+      const categories = ['Sports', 'Science', 'Music', 'Technology'];
+      const questionIds: string[] = [];
+      
+      for (const category of categories) {
         const query = `
-          SELECT id, category, question, answers, correct_answer_index, 
-                 score, is_ai_generated, created_at, updated_at
-          FROM trivia_questions 
+          SELECT id FROM trivia_questions 
           WHERE category = $1 
           ORDER BY RANDOM() 
-          LIMIT $2
+          LIMIT 4
         `;
-        const result = await client.query(query, [category, count]);
-        
-        const categoryQuestions = result.rows.map(row => ({
-          id: row.id,
-          category: row.category,
-          question: row.question,
-          answers: row.answers, // PostgreSQL automatically parses jsonb columns
-          correct_answer_index: row.correct_answer_index,
-          score: row.score,
-          is_ai_generated: row.is_ai_generated,
-          created_at: row.created_at,
-          updated_at: row.updated_at
-        }));
-        
-        questions.push(...categoryQuestions);
+        const result = await client.query(query, [category]);
+        questionIds.push(...result.rows.map(row => row.id));
       }
       
-      return questions;
+      return questionIds;
     } catch (error) {
       throw new Error(`Failed to get random questions: ${error}`);
     } finally {
@@ -351,15 +320,12 @@ export class PostgreSQLProvider implements DatabaseProvider {
   }
 
   // Session operations
-  async createSession(user_id: string, time_limit?: number): Promise<GameSession> {
+  async createGameSession(user_id: string, time_limit?: number): Promise<GameSession> {
     const id = uuidv4();
     const client = await this.pool.connect();
     
     try {
-      // Get random questions (4 from each category)
-      const categoryCounts = { 'Sports': 4, 'Science': 4, 'Music': 4, 'Technology': 4 };
-      const questions = await this.getRandomQuestionsByCategory(categoryCounts);
-      const questionIds = questions.map(q => q.id);
+      const questionIds = await this.getRandomQuestionsForSession();
       
       const query = `
         INSERT INTO game_sessions 
@@ -378,19 +344,15 @@ export class PostgreSQLProvider implements DatabaseProvider {
       ];
       
       const result = await client.query(query, values);
-      
-      if (!result.rows[0]) {
-        throw new Error('Failed to create session');
-      }
-      
       const row = result.rows[0];
+      
       return {
         id: row.id,
         user_id: row.user_id,
         status: row.status,
         current_score: row.current_score,
         questions_answered: row.questions_answered,
-        selected_questions: row.selected_questions, // PostgreSQL automatically parses jsonb columns
+        selected_questions: row.selected_questions,
         started_at: row.started_at,
         time_limit: row.time_limit,
         completed_at: row.completed_at
@@ -402,7 +364,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async getSessionById(session_id: string): Promise<GameSession | null> {
+  async getGameSessionById(session_id: string): Promise<GameSession | null> {
     const client = await this.pool.connect();
     
     try {
@@ -425,7 +387,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
         status: row.status,
         current_score: row.current_score,
         questions_answered: row.questions_answered,
-        selected_questions: row.selected_questions, // PostgreSQL automatically parses jsonb columns
+        selected_questions: row.selected_questions,
         started_at: row.started_at,
         time_limit: row.time_limit,
         completed_at: row.completed_at
@@ -437,7 +399,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async getAllSessions(): Promise<GameSession[]> {
+  async getAllGameSessions(): Promise<GameSession[]> {
     const client = await this.pool.connect();
     
     try {
@@ -455,7 +417,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
         status: row.status,
         current_score: row.current_score,
         questions_answered: row.questions_answered,
-        selected_questions: row.selected_questions, // PostgreSQL automatically parses jsonb columns
+        selected_questions: row.selected_questions,
         started_at: row.started_at,
         time_limit: row.time_limit,
         completed_at: row.completed_at
@@ -467,44 +429,122 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async updateSessionStatus(session_id: string, status: GameSession['status'], completed_at?: string): Promise<void> {
+  async updateGameSession(session_id: string, updates: Partial<GameSession>): Promise<GameSession> {
     const client = await this.pool.connect();
     
     try {
-      let query: string;
-      let values: any[];
-      
-      if (completed_at) {
-        query = 'UPDATE game_sessions SET status = $1, completed_at = $2 WHERE id = $3';
-        values = [status, completed_at, session_id];
-      } else {
-        query = 'UPDATE game_sessions SET status = $1 WHERE id = $2';
-        values = [status, session_id];
+      const updateFields: string[] = [];
+      const values: any[] = [];
+      let paramCount = 1;
+
+      if (updates.status !== undefined) {
+        updateFields.push(`status = $${paramCount++}`);
+        values.push(updates.status);
       }
+      if (updates.current_score !== undefined) {
+        updateFields.push(`current_score = $${paramCount++}`);
+        values.push(updates.current_score);
+      }
+      if (updates.questions_answered !== undefined) {
+        updateFields.push(`questions_answered = $${paramCount++}`);
+        values.push(updates.questions_answered);
+      }
+      if (updates.completed_at !== undefined) {
+        updateFields.push(`completed_at = $${paramCount++}`);
+        values.push(updates.completed_at);
+      }
+
+      values.push(session_id);
+
+      const query = `
+        UPDATE game_sessions 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramCount}
+        RETURNING *
+      `;
       
-      await client.query(query, values);
+      const result = await client.query(query, values);
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        status: row.status,
+        current_score: row.current_score,
+        questions_answered: row.questions_answered,
+        selected_questions: row.selected_questions,
+        started_at: row.started_at,
+        time_limit: row.time_limit,
+        completed_at: row.completed_at
+      };
     } catch (error) {
-      throw new Error(`Failed to update session status: ${error}`);
+      throw new Error(`Failed to update session: ${error}`);
     } finally {
       client.release();
     }
   }
 
-  async updateSessionScore(session_id: string, current_score: number, questions_answered: number): Promise<void> {
+  async getSessionQuestions(session_id: string): Promise<TriviaQuestion[]> {
     const client = await this.pool.connect();
     
     try {
-      const query = 'UPDATE game_sessions SET current_score = $1, questions_answered = $2 WHERE id = $3';
-      await client.query(query, [current_score, questions_answered, session_id]);
+      const sessionQuery = 'SELECT selected_questions FROM game_sessions WHERE id = $1';
+      const sessionResult = await client.query(sessionQuery, [session_id]);
+      
+      if (sessionResult.rows.length === 0) {
+        return [];
+      }
+      
+      const questionIds = sessionResult.rows[0].selected_questions;
+      
+      const questionsQuery = `
+        SELECT id, category, question, answers, correct_answer_index, 
+               score, is_ai_generated, created_at, updated_at
+        FROM trivia_questions 
+        WHERE id = ANY($1)
+      `;
+      const questionsResult = await client.query(questionsQuery, [questionIds]);
+      
+      return questionsResult.rows.map(row => ({
+        id: row.id,
+        category: row.category,
+        question: row.question,
+        answers: row.answers,
+        correct_answer_index: row.correct_answer_index,
+        score: row.score,
+        is_ai_generated: row.is_ai_generated,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      }));
     } catch (error) {
-      throw new Error(`Failed to update session score: ${error}`);
+      throw new Error(`Failed to get session questions: ${error}`);
+    } finally {
+      client.release();
+    }
+  }
+
+  async isQuestionInSession(session_id: string, question_id: string): Promise<boolean> {
+    const client = await this.pool.connect();
+    
+    try {
+      const query = `
+        SELECT 1 FROM game_sessions 
+        WHERE id = $1 
+        AND selected_questions @> $2
+        LIMIT 1
+      `;
+      const result = await client.query(query, [session_id, JSON.stringify([question_id])]);
+      
+      return result.rows.length > 0;
+    } catch (error) {
+      throw new Error(`Failed to check if question is in session: ${error}`);
     } finally {
       client.release();
     }
   }
 
   // Answer operations
-  async createAnswer(answerData: Omit<UserAnswer, 'id' | 'answered_at'>): Promise<UserAnswer> {
+  async createUserAnswer(answerData: Omit<UserAnswer, 'id' | 'answered_at'>): Promise<UserAnswer> {
     const id = uuidv4();
     const client = await this.pool.connect();
     
@@ -524,12 +564,8 @@ export class PostgreSQLProvider implements DatabaseProvider {
       ];
       
       const result = await client.query(query, values);
-      
-      if (!result.rows[0]) {
-        throw new Error('Failed to create answer');
-      }
-      
       const row = result.rows[0];
+      
       return {
         id: row.id,
         session_id: row.session_id,
@@ -545,7 +581,7 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async getUserAnswersForSession(session_id: string): Promise<UserAnswer[]> {
+  async getUserAnswers(session_id: string): Promise<UserAnswer[]> {
     const client = await this.pool.connect();
     
     try {
@@ -572,77 +608,44 @@ export class PostgreSQLProvider implements DatabaseProvider {
     }
   }
 
-  async hasUserAnsweredQuestion(session_id: string, question_id: string): Promise<boolean> {
+  async getUserAnswer(session_id: string, question_id: string): Promise<UserAnswer | null> {
     const client = await this.pool.connect();
     
     try {
-      const query = 'SELECT 1 FROM user_answers WHERE session_id = $1 AND question_id = $2 LIMIT 1';
+      const query = `
+        SELECT id, session_id, question_id, answer_index, is_correct, answered_at
+        FROM user_answers 
+        WHERE session_id = $1 AND question_id = $2
+        LIMIT 1
+      `;
       const result = await client.query(query, [session_id, question_id]);
       
-      return result.rows.length > 0;
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        session_id: row.session_id,
+        question_id: row.question_id,
+        answer_index: row.answer_index,
+        is_correct: row.is_correct,
+        answered_at: row.answered_at
+      };
     } catch (error) {
-      throw new Error(`Failed to check if user answered question: ${error}`);
+      throw new Error(`Failed to get user answer: ${error}`);
     } finally {
       client.release();
     }
   }
 
-  // Session progress
-  async getSessionProgress(session_id: string): Promise<SessionProgress | null> {
-    const client = await this.pool.connect();
-    
-    try {
-      const session = await this.getSessionById(session_id);
-      if (!session) {
-        return null;
-      }
-
-      const answeredQuestions = await this.getUserAnswersForSession(session_id);
-      
-      // Get all questions for this session
-      const questionIds = session.selected_questions;
-      const questionQuery = `
-        SELECT id, category, question, answers, correct_answer_index, 
-               score, is_ai_generated, created_at, updated_at
-        FROM trivia_questions 
-        WHERE id = ANY($1)
-      `;
-      const questionResult = await client.query(questionQuery, [questionIds]);
-      
-      const questions = questionResult.rows.map(row => ({
-        id: row.id,
-        category: row.category,
-        question: row.question,
-        answers: row.answers, // PostgreSQL automatically parses jsonb columns
-        correct_answer_index: row.correct_answer_index,
-        score: row.score,
-        is_ai_generated: row.is_ai_generated,
-        created_at: row.created_at,
-        updated_at: row.updated_at
-      }));
-
-      const totalPossibleScore = questions.reduce((sum, q) => sum + q.score, 0);
-      const scorePercentage = totalPossibleScore > 0 ? (session.current_score / totalPossibleScore) * 100 : 0;
-      
-      const answeredQuestionIds = answeredQuestions.map(a => a.question_id);
-      const unansweredQuestions = questions.filter(q => !answeredQuestionIds.includes(q.id));
-      const currentQuestion = unansweredQuestions.length > 0 ? unansweredQuestions[0] : undefined;
-      const nextQuestion = unansweredQuestions.length > 1 ? unansweredQuestions[1] : undefined;
-
-      return {
-        session,
-        current_question: currentQuestion,
-        total_questions: questions.length,
-        questions_remaining: unansweredQuestions.length,
-        answered_questions: answeredQuestions,
-        total_possible_score: totalPossibleScore,
-        score_percentage: scorePercentage,
-        next_question: nextQuestion
-      };
-    } catch (error) {
-      throw new Error(`Failed to get session progress: ${error}`);
-    } finally {
-      client.release();
+  async close(): Promise<void> {
+    if (PostgreSQLProvider.sharedPool) {
+      await PostgreSQLProvider.sharedPool.end();
+      PostgreSQLProvider.sharedPool = null;
     }
   }
 }
+
+export default PostgreSQLProvider;

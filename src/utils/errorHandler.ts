@@ -20,7 +20,10 @@ export function errorHandler(
 
 // Utility function for handling database errors consistently
 export function handleDatabaseError(error: unknown, res: express.Response, operation: string): void {
-  console.error(`Error ${operation}:`, error);
+  // Only log errors in development/production, not during testing
+  if (process.env.NODE_ENV !== 'test') {
+    console.error(`Error ${operation}:`, error);
+  }
 
   // Handle specific database errors
   if (error && typeof error === 'object' && 'code' in error) {
@@ -63,7 +66,10 @@ export function handleDatabaseError(error: unknown, res: express.Response, opera
 
 // Specialized error handler for user operations
 export function handleUserError(error: unknown, res: express.Response, operation: string): void {
-  console.error(`Error ${operation}:`, error);
+  // Only log errors in development/production, not during testing
+  if (process.env.NODE_ENV !== 'test') {
+    console.error(`Error ${operation}:`, error);
+  }
 
   // Handle specific database errors
   if (error && typeof error === 'object' && 'code' in error) {

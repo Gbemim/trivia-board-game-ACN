@@ -1,8 +1,9 @@
 import express, { Request, Response } from 'express';
-import { DatabaseService } from '../data/database';
+import PostgreSQLProvider from '../data/postgresql';
 import { handleDatabaseError } from '../utils/errorHandler';
 
 const questionsRouter = express.Router();
+const database = new PostgreSQLProvider();
 
 /**
  * Create a new trivia question (Game Master)
@@ -111,7 +112,7 @@ questionsRouter.post('/', async (req: Request, res: Response) => {
       is_ai_generated: is_ai_generated || false
     };
 
-    const newQuestion = await DatabaseService.createTriviaQuestion(questionData);
+    const newQuestion = await database.createQuestion(questionData);
 
     res.status(201).json({
       status: 'success',
@@ -129,7 +130,7 @@ questionsRouter.post('/', async (req: Request, res: Response) => {
  */
 questionsRouter.get('/', async (req: Request, res: Response) => {
   try {
-    const questions = await DatabaseService.getAllTriviaQuestions();
+    const questions = await database.getAllQuestions();
 
     res.json({
       status: 'success',
@@ -157,7 +158,7 @@ questionsRouter.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    const question = await DatabaseService.getTriviaQuestionById(id);
+    const question = await database.getQuestionById(id);
     
     if (!question) {
       return res.status(404).json({
@@ -193,7 +194,7 @@ questionsRouter.put('/:id', async (req: Request, res: Response) => {
     }
 
     // Check if question exists
-    const existingQuestion = await DatabaseService.getTriviaQuestionById(id);
+    const existingQuestion = await database.getQuestionById(id);
     if (!existingQuestion) {
       return res.status(404).json({
         status: 'error',
@@ -203,7 +204,7 @@ questionsRouter.put('/:id', async (req: Request, res: Response) => {
     }
 
     // Check if question is in use by an active session
-    const isInUse = await DatabaseService.isQuestionInUse(id);
+    const isInUse = await database.isQuestionInUse(id);
     if (isInUse) {
       return res.status(409).json({
         status: 'error',
@@ -337,8 +338,8 @@ questionsRouter.put('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    // Update the trivia question
-    const updatedQuestion = await DatabaseService.updateTriviaQuestion(id, updates);
+        // Update the trivia question
+    const updatedQuestion = await database.updateQuestion(id, updates);
 
     res.json({
       status: 'success',
@@ -365,7 +366,7 @@ questionsRouter.delete('/:id', async (req: Request, res: Response) => {
     }
 
     // Check if question exists
-    const existingQuestion = await DatabaseService.getTriviaQuestionById(id);
+    const existingQuestion = await database.getQuestionById(id);
     if (!existingQuestion) {
       return res.status(404).json({
         status: 'error',
@@ -375,7 +376,7 @@ questionsRouter.delete('/:id', async (req: Request, res: Response) => {
     }
 
     // Check if question is in use by an active session
-    const isInUse = await DatabaseService.isQuestionInUse(id);
+    const isInUse = await database.isQuestionInUse(id);
     if (isInUse) {
       return res.status(409).json({
         status: 'error',
@@ -385,7 +386,7 @@ questionsRouter.delete('/:id', async (req: Request, res: Response) => {
     }
 
     // Delete the trivia question
-    await DatabaseService.deleteTriviaQuestion(id);
+    await database.deleteQuestion(id);
 
     res.json({
       status: 'success',

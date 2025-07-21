@@ -58,9 +58,6 @@ coverage/
 dist/
 build/
 
-# Supabase (if using CLI)
-.supabase/
-
 # Misc
 *.log
 

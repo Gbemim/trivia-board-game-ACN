@@ -1,6 +1,6 @@
 # Trivia Board Game Backend
 
-This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, Express, and Supabase.
+This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, Express, and PostgreSQL.
 
 ## Overview
 - **Game Master**: Can create, update, delete, and list trivia questions; view all game sessions.
@@ -12,8 +12,7 @@ This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, E
 ### Prerequisites
 - Node.js (v18+ recommended)
 - npm or yarn
-- **Choose one database option:**
-  - **Supabase**: Hosted PostgreSQL (recommended for quick start)
+- **Database:**
   - **PostgreSQL**: Local PostgreSQL installation
 
 ### Setup
@@ -22,18 +21,8 @@ This is a backend API for a Trivia Board Game, built with Node.js, TypeScript, E
    ```bash
    npm install
    ```
-3. **Choose your database setup** (see Database Setup Instructions below)
+3. Set up your PostgreSQL database (see Database Setup Instructions below)
 4. Create a `.env` file in the project root (copy from `.env.example` and update):
-   
-   **For Supabase:**
-   ```env
-   DATABASE_TYPE=supabase
-   SUPABASE_URL=your-supabase-url
-   SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   PORT=3000
-   NODE_ENV=development
-   ```
    
    **For PostgreSQL:**
    ```env
@@ -75,7 +64,6 @@ Health check: `http://localhost:3000/health`
 ```
 database/                   # Database setup files
 ├── schemas/                # Database schema files
-│   ├── supabase.sql        # Supabase-compatible schema
 │   └── postgresql_schema.sql # PostgreSQL schema with indexes
 ├── seeds/                  # Seed data files
 │   └── seed_trivia_questions.sql # Sample trivia questions
@@ -83,7 +71,6 @@ database/                   # Database setup files
 src/
 ├── index.ts                # Main application entry point
 ├── data/                   # Data access layer
-│   ├── supabase.ts         # Supabase client configuration
 │   └── database.ts         # Database service operations
 ├── routes/                 # API route definitions
 │   ├── index.ts            # Route setup and mounting
@@ -103,7 +90,7 @@ src/
 ### Architecture Highlights
 - **Pure TypeScript**: Clean TypeScript source code, compiled JavaScript output
 - **Modular Routes**: Organized by functionality (users, sessions, questions, health)
-- **Data Layer**: Centralized database operations and Supabase configuration
+- **Data Layer**: Centralized database operations with PostgreSQL
 - **Utilities**: Reusable helper functions and middleware
 - **Clean Separation**: Business logic separated from route definitions
 - **Comprehensive Testing**: 34 tests covering all endpoints with real validation logic
@@ -345,7 +332,7 @@ src/__tests__/
 ### Prerequisites
 - Node.js (v18+ recommended)
 - npm or yarn
-- Supabase project with database setup
+- PostgreSQL database
 
 ### Step-by-Step Setup
 
@@ -359,16 +346,18 @@ src/__tests__/
 2. **Environment Configuration**:
    Create `.env` file:
    ```env
-   SUPABASE_URL=your-supabase-url
-   SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   DATABASE_TYPE=postgresql
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=trivia_game
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_password
    PORT=3000
    NODE_ENV=development
    ```
 
 3. **Database Setup**:
-   - **For Supabase**: Copy contents of `database/schemas/supabase.sql` and run in Supabase SQL Editor
-   - **For PostgreSQL**: Run `psql trivia_game < database/schemas/postgresql_schema.sql`
+   - **PostgreSQL**: Run `psql trivia_game < database/schemas/postgresql_schema.sql`
    - **Optional**: Run `database/seeds/seed_trivia_questions.sql` for 32 sample questions from the challenge
    - **Verify**: Run `verify_database.sql` to confirm setup
 
@@ -388,26 +377,30 @@ src/__tests__/
 
 ## Database Setup Instructions
 
-### Database Options
+### Database Setup
 
-The project now supports multiple database backends. Choose the one that best fits your needs:
+The project uses PostgreSQL as the database backend.
 
-#### Option 1: Supabase (Cloud PostgreSQL)
-**Best for:** Quick setup, hosted solution, automatic backups
+#### PostgreSQL Setup
+**Best for:** Full control, local development, production flexibility
 
-1. **Create Tables**: Run `database/schemas/supabase.sql` in Supabase SQL Editor
+1. **Create Tables**: Run `database/schemas/postgresql_schema.sql`
+   ```bash
+   psql trivia_game < database/schemas/postgresql_schema.sql
+   ```
 2. **Environment Setup**: 
    ```env
-   DATABASE_TYPE=supabase
-   SUPABASE_URL=your-supabase-url
-   SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   DATABASE_TYPE=postgresql
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=trivia_game
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_password
    ```
 3. **Verify Setup**: Run `verify_database.sql` to confirm schema
 4. **Add Sample Data**: Optionally run `database/seeds/seed_trivia_questions.sql`
 
-#### Option 2: PostgreSQL (Local/Self-hosted)
-**Best for:** Full control, local development, no external dependencies
+#### PostgreSQL Installation
 
 1. **Install PostgreSQL**:
    ```bash
@@ -446,15 +439,10 @@ The project now supports multiple database backends. Choose the one that best fi
 
 ### Database Schema Files
 
-- **`database/schemas/supabase.sql`** - Supabase-compatible schema
-- **`database/schemas/postgresql_schema.sql`** - PostgreSQL-specific schema with indexes and triggers
+- **`database/schemas/postgresql_schema.sql`** - PostgreSQL schema with indexes and triggers
 - **`database/seeds/seed_trivia_questions.sql`** - Sample trivia questions (32 questions from challenge)
 - **`verify_database.sql`** - Schema verification queries
-- **`.env.example`** - Environment template for both database types
-
-### Switching Between Databases
-
-Simply change the `DATABASE_TYPE` environment variable:
+- **`.env.example`** - Environment template
 - `DATABASE_TYPE=supabase` - Use Supabase
 - `DATABASE_TYPE=postgresql` - Use PostgreSQL
 
