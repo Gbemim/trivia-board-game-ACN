@@ -85,22 +85,18 @@ src/
 
 **For complete test setup instructions, see: [src/__tests__/README.md](src/__tests__/README.md)**
 
-Quick overview:
+Quick setup:
 ```bash
 # Setup test environment (first time only)
 cp .env.test.example .env.test
 # Edit .env.test with your database settings
 
-# Setup test database
-cd src/__tests__
-./setup-test-db.sh
-
-# Run tests
+# Run tests (database setup is automatic)
 npm test
 npm run test:coverage
 ```
 
-**Note**: Test setup requires PostgreSQL configuration. See the detailed testing guide at [src/__tests__/README.md](src/__tests__/README.md) for troubleshooting and environment-specific setup.
+**Note**: Database setup is now automatic! Jest will create the test database and run migrations automatically when you run tests.
 
 ## Environment Configuration
 
