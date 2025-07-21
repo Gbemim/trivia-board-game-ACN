@@ -5,6 +5,7 @@ import { usersRouter } from '../routes/users';
 /**
  * USERS API TEST SUITE
  * Tests for POST /users and GET /users/:id endpoints
+ * Tests include actual validation logic for UUID and username formats
  */
 
 // Mock the database module
@@ -13,12 +14,6 @@ jest.mock('../data/database', () => ({
     createUser: jest.fn(),
     getUser: jest.fn()
   }
-}));
-
-// Mock the userHelpers module
-jest.mock('../utils/userHelpers', () => ({
-  isValidUserId: jest.fn(),
-  isValidUsername: jest.fn()
 }));
 
 const app = express();
@@ -35,14 +30,12 @@ describe('Users API Endpoints', () => {
       // Test creating user with a provided username
       it('should create a new user with provided username', async () => {
         const { DatabaseService } = require('../data/database');
-        const { isValidUsername } = require('../utils/userHelpers');
         
         const mockUser = {
-          user_id: '123e4567-e89b-12d3-a456-426614174000',
+          user_id: '123e4567-e89b-42d3-9456-426614174000',
           username: 'testplayer'
         };
 
-        isValidUsername.mockReturnValue(true);
         DatabaseService.createUser.mockResolvedValue(mockUser);
 
         const response = await request(app)
@@ -52,7 +45,7 @@ describe('Users API Endpoints', () => {
         expect(response.status).toBe(201);
         expect(response.body.status).toBe('success');
         expect(response.body.message).toBe('User created successfully');
-        expect(response.body.data.user_id).toBe('123e4567-e89b-12d3-a456-426614174000');
+        expect(response.body.data.user_id).toBe('123e4567-e89b-42d3-9456-426614174000');
         expect(response.body.data.username).toBe('testplayer');
         expect(DatabaseService.createUser).toHaveBeenCalledWith('testplayer');
       });
@@ -72,12 +65,31 @@ describe('Users API Endpoints', () => {
 
       // Test that invalid username length is rejected
       it('should return 400 when username is invalid (empty or too long)', async () => {
-        const { isValidUsername } = require('../utils/userHelpers');
-        isValidUsername.mockReturnValue(false);
-
         const response = await request(app)
           .post('/users')
           .send({ username: '' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe('Username must be between 1 and 50 characters if provided');
+      });
+
+      // Test that username with only spaces is rejected
+      it('should return 400 when username contains only spaces', async () => {
+        const response = await request(app)
+          .post('/users')
+          .send({ username: '   ' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe('Username must be between 1 and 50 characters if provided');
+      });
+
+      // Test that very long username is rejected
+      it('should return 400 when username is too long', async () => {
+        const longUsername = 'a'.repeat(51); // 51 characters
+        
+        const response = await request(app)
+          .post('/users')
+          .send({ username: longUsername });
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe('Username must be between 1 and 50 characters if provided');
@@ -88,9 +100,7 @@ describe('Users API Endpoints', () => {
       // Test that database errors are handled gracefully
       it('should handle database errors gracefully', async () => {
         const { DatabaseService } = require('../data/database');
-        const { isValidUsername } = require('../utils/userHelpers');
         
-        isValidUsername.mockReturnValue(true);
         DatabaseService.createUser.mockRejectedValue(new Error('Database connection failed'));
 
         const response = await request(app)
@@ -109,25 +119,41 @@ describe('Users API Endpoints', () => {
       // Test retrieving existing user by valid ID
       it('should get user details with valid ID', async () => {
         const { DatabaseService } = require('../data/database');
-        const { isValidUserId } = require('../utils/userHelpers');
         
         const mockUser = {
-          user_id: '123e4567-e89b-12d3-a456-426614174000',
+          user_id: '123e4567-e89b-42d3-9456-426614174000',
           username: 'testuser'
         };
 
-        isValidUserId.mockReturnValue(true);
         DatabaseService.getUser.mockResolvedValue(mockUser);
 
         const response = await request(app)
-          .get('/users/123e4567-e89b-12d3-a456-426614174000');
+          .get('/users/123e4567-e89b-42d3-9456-426614174000');
 
         expect(response.status).toBe(200);
         expect(response.body.status).toBe('success');
         expect(response.body.message).toBe('User retrieved successfully');
-        expect(response.body.data.user_id).toBe('123e4567-e89b-12d3-a456-426614174000');
+        expect(response.body.data.user_id).toBe('123e4567-e89b-42d3-9456-426614174000');
         expect(response.body.data.username).toBe('testuser');
-        expect(DatabaseService.getUser).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000');
+        expect(DatabaseService.getUser).toHaveBeenCalledWith('123e4567-e89b-42d3-9456-426614174000');
+      });
+
+      // Test that invalid UUID format is rejected
+      it('should return 400 when user ID is not a valid UUID', async () => {
+        const response = await request(app)
+          .get('/users/invalid-uuid-format');
+
+        expect(response.status).toBe(400);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toBe('Invalid user ID format');
+      });
+
+      // Test that empty user ID is rejected
+      it('should return 400 when user ID is empty', async () => {
+        const response = await request(app)
+          .get('/users/');
+
+        expect(response.status).toBe(404); // This will be a 404 due to route not matching
       });
     });
 
@@ -135,18 +161,16 @@ describe('Users API Endpoints', () => {
       // Test that non-existent user returns 404
       it('should return 404 when user does not exist', async () => {
         const { DatabaseService } = require('../data/database');
-        const { isValidUserId } = require('../utils/userHelpers');
         
-        isValidUserId.mockReturnValue(true);
         DatabaseService.getUser.mockResolvedValue(null);
 
         const response = await request(app)
-          .get('/users/123e4567-e89b-12d3-a456-426614174000');
+          .get('/users/123e4567-e89b-42d3-9456-426614174000');
 
         expect(response.status).toBe(404);
         expect(response.body.status).toBe('error');
         expect(response.body.message).toBe('User not found');
-        expect(response.body.error).toBe('User with ID 123e4567-e89b-12d3-a456-426614174000 does not exist');
+        expect(response.body.error).toBe('User with ID 123e4567-e89b-42d3-9456-426614174000 does not exist');
       });
     });
 
@@ -154,13 +178,11 @@ describe('Users API Endpoints', () => {
       // Test that database connection errors are handled
       it('should handle database connection errors gracefully', async () => {
         const { DatabaseService } = require('../data/database');
-        const { isValidUserId } = require('../utils/userHelpers');
         
-        isValidUserId.mockReturnValue(true);
         DatabaseService.getUser.mockRejectedValue(new Error('Database connection timeout'));
 
         const response = await request(app)
-          .get('/users/123e4567-e89b-12d3-a456-426614174000');
+          .get('/users/123e4567-e89b-42d3-9456-426614174000');
 
         expect(response.status).toBe(500);
         expect(response.body.status).toBe('error');
@@ -183,14 +205,12 @@ describe('Users API Endpoints', () => {
     // Test that extra fields in request are ignored for security
     it('should ignore extra fields in POST request', async () => {
       const { DatabaseService } = require('../data/database');
-      const { isValidUsername } = require('../utils/userHelpers');
       
       const mockUser = {
-        user_id: '123e4567-e89b-12d3-a456-426614174000',
+        user_id: '123e4567-e89b-42d3-9456-426614174000',
         username: 'testuser'
       };
 
-      isValidUsername.mockReturnValue(true);
       DatabaseService.createUser.mockResolvedValue(mockUser);
 
       const response = await request(app)
